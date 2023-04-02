@@ -33,7 +33,7 @@ class SOM:
         for epoch in range(self.epochs):
             for sample in data:
                 bmu, bmu_idx = self._find_bmu(sample)
-                self._update_weights(sample, bmu, bmu_idx, epoch)
+                self._update_weights(sample, bmu_idx, epoch)
 
         self._compute_performance_metrics(data)
 
@@ -49,24 +49,32 @@ class SOM:
         bmu = self.weights[bmu_idx]
         return bmu, bmu_idx
 
-    def _update_weights(self, sample: ndarray, bmu: ndarray, bmu_idx: Tuple[int, int], epoch: int) -> None:
+    def _update_weights(self, sample: ndarray, bmu_idx: Tuple[int, int], epoch: int) -> None:
         """
         Update the weights of the SOM nodes based on the given input sample and BMU.
 
         :param sample: A 1D numpy array representing the input sample.
-        :param bmu: A 1D numpy array representing the BMU.
         :param bmu_idx: A tuple containing the index of the BMU in the SOM grid.
         :param epoch: The current epoch of training.
         """
-        for x in range(self.x_size):
-            for y in range(self.y_size):
-                current_weight = self.weights[x, y, :]
-                distance = np.linalg.norm(np.array([x, y]) - np.array(bmu_idx))
-                sigma = self._decay_function(epoch)
-                if distance <= sigma:
-                    influence = np.exp(-distance ** 2 / (2 * sigma ** 2))
-                    new_weight = current_weight + self.learning_rate * influence * (sample - current_weight)
-                    self.weights[x, y, :] = new_weight
+        x, y = np.meshgrid(np.arange(self.x_size), np.arange(self.y_size))
+        x = x.reshape(-1, 1)
+        y = y.reshape(-1, 1)
+
+        grid = np.concatenate((x, y), axis=1)
+
+        distance = np.linalg.norm(grid - np.array(bmu_idx), axis=1)
+        sigma = self._decay_function(epoch)
+        influence = np.exp(-distance ** 2 / (2 * sigma ** 2))
+
+        mask = distance <= sigma
+        influence = influence[mask].reshape(-1, 1)
+
+        affected_nodes = grid[mask]
+
+        affected_weights = self.weights[affected_nodes[:, 0], affected_nodes[:, 1], :]
+        new_weights = affected_weights + self.learning_rate * influence * (sample - affected_weights)
+        self.weights[affected_nodes[:, 0], affected_nodes[:, 1], :] = new_weights
 
     def _decay_function(self, epoch: int) -> float:
         """
@@ -84,7 +92,7 @@ class SOM:
         :param data: A 2D numpy array containing the input data.
         """
         bmus_idx = self._get_bmus(data)
-        self.quantization_error = np.mean([np.linalg.norm(data[i] - self.weights[bmu]) for i, bmu in enumerate(bmus_idx)])
+        self.quantization_error = self._compute_quantization_error(data, bmus_idx)
         self.topological_error = self._compute_topological_error(bmus_idx)
 
         cluster_labels = [y * self.x_size + x for x, y in bmus_idx]
@@ -102,7 +110,10 @@ class SOM:
         :param data: A 2D numpy array containing the input data.
         :return: A list of BMU indices in the SOM grid for each input sample.
         """
-        return [self._find_bmu(sample)[1] for sample in data]
+        data_expanded = data[:, np.newaxis, np.newaxis, :]
+        distance_map = np.linalg.norm(self.weights - data_expanded, axis=3)
+        bmu_indices = np.unravel_index(np.argmin(distance_map.reshape(data.shape[0], -1), axis=1), (self.x_size, self.y_size))
+        return list(zip(bmu_indices[0], bmu_indices[1]))
 
     def _compute_topological_error(self, bmus_idx: List[Tuple[int, int]]) -> float:
         """
@@ -111,9 +122,19 @@ class SOM:
         :param bmus_idx: A list of BMU indices in the SOM grid.
         :return: The topological error for the SOM.
         """
-        errors = 0
-        for i, bmu in enumerate(bmus_idx[:-1]):
-            next_bmu = bmus_idx[i + 1]
-            if np.linalg.norm(np.array(bmu) - np.array(next_bmu)) > 1:
-                errors += 1
+        bmus_idx_array = np.array(bmus_idx)
+        distances = np.linalg.norm(bmus_idx_array[:-1] - bmus_idx_array[1:], axis=1)
+        errors = np.sum(distances > 1)
         return errors / len(bmus_idx)
+
+    def _compute_quantization_error(self, data: ndarray, bmus_idx: List[Tuple[int, int]]) -> float:
+        """
+        Compute the quantization error for the SOM based on the given data and BMUs.
+
+        :param data: A 2D numpy array containing the input data.
+        :param bmus_idx: A list of BMU indices in the SOM grid.
+        :return: The quantization error for the SOM.
+        """
+        bmus = np.array([self.weights[x, y, :] for x, y in bmus_idx])
+        errors = np.linalg.norm(data - bmus, axis=1)
+        return np.mean(errors)

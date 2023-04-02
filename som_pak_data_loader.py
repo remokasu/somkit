@@ -5,16 +5,15 @@ from sklearn.utils import Bunch
 
 
 class SOMPakDataLoader:
-    def __init__(self, filepath: str):
+    def __init__(self, filepath: str, encoding=None) -> None:
         """
         A class for converting SOM_PAK format data to the format of sklearn.datasets.
 
-        Parameters
-        ----------
-        filepath : str
-            The file path of the SOM_PAK format data.
+        :param filepath : The file path of the SOM_PAK format data.
+        :param encoding : The encoding of the SOM_PAK format data
         """
         self.filepath = filepath
+        self.encoding = encoding
 
     def load_data(self) -> Bunch:
         """
@@ -27,8 +26,12 @@ class SOMPakDataLoader:
             It has four keys: 'data', 'target', 'feature_names', 'target_names'.
         """
         # Load SOM_PAK format data
-        with open(self.filepath, 'r') as f:
-            data = f.readlines()
+        if self.encoding is None:
+            with open(self.filepath, 'r') as f:
+                data = f.readlines()
+        else:
+            with open(self.filepath, 'r', encoding=self.encoding) as f:
+                data = f.readlines()
 
         # Get the number of dimensions
         num_features = int(data[0].strip())
