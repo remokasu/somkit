@@ -24,6 +24,10 @@ som.train(data)
 
 # Visualize the SOM
 som_visualizer = SOMVisualizer(som, data, target, target_names)
+
+# If you need to specify a ttf file, write
+# som_visualizer = SOMVisualizer(som, data, target, target_names, font_path="./fonts/ipaexg.ttf")
+
 som_visualizer.plot(grid_type='square', label_type='cluster')
 som_visualizer.plot(grid_type='square', label_type='block')
 som_visualizer.plot(grid_type='hexagonal', label_type='cluster')
