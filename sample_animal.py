@@ -1,7 +1,8 @@
 from sklearn.preprocessing import StandardScaler
+
 from som import SOM
-from som_visualizer import SOMVisualizer
 from som_pak_data_loader import SOMPakDataLoader
+from som_visualizer import SOMVisualizer
 
 # Load the 'animal.dat' dataset
 loader = SOMPakDataLoader("animal.dat")
