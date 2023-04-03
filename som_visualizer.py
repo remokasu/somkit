@@ -66,6 +66,9 @@ class SOMVisualizer:
         # Find cluster centers and add labels
         cluster_centers = self.find_cluster_centers()
         for label, center in cluster_centers.items():
+            if not np.isfinite(center[0]) or not np.isfinite(center[1]):
+                print(f"Warning: Invalid coordinates for cluster center {label}. Please check your data and SOM settings.")
+                continue
             plt.text(center[1], center[0], self.target_names[label], ha='center', va='center', color='white', fontsize=12, fontweight='bold', fontproperties=self.font_prop)
 
         # Add a legend for the class labels
@@ -93,6 +96,9 @@ class SOMVisualizer:
         # Add class labels to each node
         for x in range(self.som.x_size):
             for y in range(self.som.y_size):
+                if not np.isfinite(x) or not np.isfinite(y):
+                    print(f"Warning: Invalid coordinates for data point with label {self.target_names[node_labels[x, y]]} at position ({x}, {y}). Please check your data and SOM settings.")
+                    continue
                 plt.text(y, x, self.target_names[node_labels[x, y]], ha='center', va='center', color='white', fontsize=10, fontproperties=self.font_prop)
 
         # Add a legend for the class labels
@@ -121,6 +127,9 @@ class SOMVisualizer:
         cluster_centers = self.find_cluster_centers()
         for label, center in cluster_centers.items():
             hex_center = (center[1] + 0.5 * (center[0] % 2), center[0] * np.sqrt(3) / 2)
+            if not np.isfinite(center[0]) or not np.isfinite(center[1]):
+                print(f"Warning: Invalid coordinates for cluster center {label}. Please check your data and SOM settings.")
+                continue
             plt.text(hex_center[0], hex_center[1], self.target_names[label], ha='center', va='center', color='white', fontsize=12, fontweight='bold', fontproperties=self.font_prop)
 
         plt.xlim(-0.5, self.som.y_size + (self.som.x_size % 2) * 0.5 - 0.5)
@@ -149,6 +158,10 @@ class SOMVisualizer:
         hex_size = 0.5
         for x in range(self.som.x_size):
             for y in range(self.som.y_size):
+                hex_center = (y + 0.5 * (x % 2), x * np.sqrt(3) / 2)
+                if not np.isfinite(hex_center[0]) or not np.isfinite(hex_center[1]):
+                    print(f"Warning: Invalid coordinates for data point with label {self.target_names[node_labels[x, y]]} at position {hex_center}. Please check your data and SOM settings.")
+                    continue
                 hex_center = (y + 0.5 * (x % 2), x * np.sqrt(3) / 2)
                 hex_coords = self.hexagon_coordinates(hex_center[0], hex_center[1], hex_size)
                 hex_color = self.som.weights[x, y].mean()
