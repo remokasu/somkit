@@ -92,7 +92,8 @@ class SOM:
 
     def _find_bmu(self, sample: np.ndarray) -> Tuple[np.ndarray, Tuple[int, int]]:
         x_indices, y_indices = np.meshgrid(np.arange(self.x_size), np.arange(self.y_size), indexing='ij')
-        distances = np.vectorize(self.topology_function)(x_indices, y_indices, 0, 0)
+        sample_x, sample_y = np.unravel_index(np.argmin(np.linalg.norm(self.weights - sample, axis=2)), (self.x_size, self.y_size))
+        distances = self.topology_function(x_indices, y_indices, sample_x, sample_y)
         bmu_idx = np.unravel_index(np.argmin(distances), (self.x_size, self.y_size))
         bmu = self.weights[bmu_idx]
         return bmu, bmu_idx
@@ -201,31 +202,31 @@ class SOM:
         else:
             raise ValueError(f"Invalid topology: {topology}")
 
-    def _rectangular_topology(self, x1: int, y1: int, x2: int, y2: int) -> float:
+    def _rectangular_topology(self, x1: np.ndarray, y1: np.ndarray, x2: int, y2: int) -> np.ndarray:
         return np.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
 
-    def _hexagonal_topology(self, x1: int, y1: int, x2: int, y2: int) -> float:
+    def _hexagonal_topology(self, x1: np.ndarray, y1: np.ndarray, x2: int, y2: int) -> np.ndarray:
         ax, ay = self._to_cube_coordinates(x1, y1)
         bx, by = self._to_cube_coordinates(x2, y2)
         return np.sqrt((ax - bx) ** 2 + (ay - by) ** 2)
 
-    def _to_cube_coordinates(self, x: int, y: int) -> Tuple[int, int, int]:
+    def _circular_topology(self, x1: np.ndarray, y1: np.ndarray, x2: int, y2: int) -> np.ndarray:
+        angle1 = np.arctan2(y1 - self.y_size // 2, x1 - self.x_size // 2)
+        angle2 = np.arctan2(y2 - self.y_size // 2, x2 - self.x_size // 2)
+        return np.abs(angle1 - angle2)
+
+    def _ring_topology(self, x1: np.ndarray, y1: np.ndarray, x2: int, y2: int) -> np.ndarray:
+        r1, theta1 = self._to_polar_coordinates(x1, y1)
+        r2, theta2 = self._to_polar_coordinates(x2, y2)
+        return np.sqrt((r1 - r2) ** 2 + (theta1 - theta2) ** 2)
+
+    def _to_cube_coordinates(self, x: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         x3 = x - (y + (y % 2)) // 2
         z3 = y
         # y3 = -x3 - z3  # y3 is not used in the current implementation, but this equation holds for cube coordinates.
         return x3, z3
 
-    def _circular_topology(self, x1: int, y1: int, x2: int, y2: int) -> float:
-        angle1 = np.arctan2(y1 - self.y_size // 2, x1 - self.x_size // 2)
-        angle2 = np.arctan2(y2 - self.y_size // 2, x2 - self.x_size // 2)
-        return np.abs(angle1 - angle2)
-
-    def _ring_topology(self, x1: int, y1: int, x2: int, y2: int) -> float:
-        r1, theta1 = self._to_polar_coordinates(x1, y1)
-        r2, theta2 = self._to_polar_coordinates(x2, y2)
-        return np.sqrt((r1 - r2) ** 2 + (theta1 - theta2) ** 2)
-
-    def _to_polar_coordinates(self, x: int, y: int) -> Tuple[float, float]:
+    def _to_polar_coordinates(self, x: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         dx = x - self.x_size // 2
         dy = y - self.y_size // 2
         r = np.sqrt(dx ** 2 + dy ** 2)
