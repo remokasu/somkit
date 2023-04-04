@@ -11,7 +11,7 @@ To get started, follow these steps:
 1. Install the required dependencies:
 
 ~~~ bash
-pip install numpy scikit-learn matplotlib
+pip install numpy scikit-learn matplotlib tqdm
 ~~~
 
 2. Clone this repository:

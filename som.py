@@ -6,6 +6,7 @@ import numpy as np
 from numpy import ndarray
 from sklearn.decomposition import PCA
 from sklearn.metrics import silhouette_score
+from tqdm import tqdm
 
 
 class SOM:
@@ -71,7 +72,8 @@ class SOM:
         if self.weights is None:
             self.initialize_weights_randomly()
 
-        for epoch in range(self.epochs):
+        # for epoch in range(self.epochs):
+        for epoch in tqdm(range(self.epochs)):
             for sample in self.data:
                 bmu, bmu_idx = self._find_bmu(sample)
                 self._update_weights(sample, bmu_idx, epoch)
