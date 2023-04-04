@@ -19,8 +19,23 @@ data = scaler.fit_transform(data)
 # Create an instance of SOM
 som = SOM(x_size=10, y_size=10, input_dim=data.shape[1], epochs=200, learning_rate=0.1)
 
-# Train the SOM
-som.train(data)
+# Set the input data for the SOM
+som.set_data(data)
+
+# Initialize the weights using random values
+som.initialize_weights_randomly()
+
+# or
+# Initialize the weights using PCA
+# som.initialize_weights_with_pca()
+
+topology = 'rectangular'
+# topology = 'hexagonal'
+# topology = 'circular'
+# topology = 'ring'
+
+# Train the SOM using the input data
+som.train()
 
 # Visualize the SOM
 som_visualizer = SOMVisualizer(som, data, target, target_names)
@@ -29,7 +44,7 @@ som_visualizer = SOMVisualizer(som, data, target, target_names)
 # som_visualizer = SOMVisualizer(som, data, target, target_names, font_path="./fonts/ipaexg.ttf")
 
 ## The plot is displayed in a grid pattern, and the labels are shown for each cluster.
-som_visualizer.plot(grid_type='square', label_type='cluster')
+som_visualizer.plot(grid_type='square', label_type='cluster', topology=topology)
 
 ## The plot is displayed in a grid pattern, and the labels are shown for each block.
 # som_visualizer.plot(grid_type='square', label_type='block')
