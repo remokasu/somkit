@@ -4,6 +4,12 @@ from som import SOM
 from som_pak_data_loader import SOMPakDataLoader
 from som_visualizer import SOMVisualizer
 
+topology = 'rectangular'
+# topology = 'hexagonal'
+# topology = 'circular'
+# topology = 'ring'
+
+
 # Load the 'animal.dat' dataset
 loader = SOMPakDataLoader("animal.dat")
 animal_data = loader.load_data()
@@ -17,7 +23,7 @@ scaler = StandardScaler()
 data = scaler.fit_transform(data)
 
 # Create an instance of SOM
-som = SOM(x_size=10, y_size=10, input_dim=data.shape[1], epochs=200, learning_rate=0.1)
+som = SOM(x_size=10, y_size=10, input_dim=data.shape[1], epochs=200, learning_rate=0.1, topology=topology)
 
 # Set the input data for the SOM
 som.set_data(data)
@@ -29,10 +35,6 @@ som.initialize_weights_randomly()
 # Initialize the weights using PCA
 # som.initialize_weights_with_pca()
 
-topology = 'rectangular'
-# topology = 'hexagonal'
-# topology = 'circular'
-# topology = 'ring'
 
 # Train the SOM using the input data
 som.train()
@@ -44,7 +46,7 @@ som_visualizer = SOMVisualizer(som, data, target, target_names)
 # som_visualizer = SOMVisualizer(som, data, target, target_names, font_path="./fonts/ipaexg.ttf")
 
 ## The plot is displayed in a grid pattern, and the labels are shown for each cluster.
-som_visualizer.plot(grid_type='square', label_type='cluster', topology=topology)
+som_visualizer.plot(grid_type=topology, label_type='cluster')
 
 ## The plot is displayed in a grid pattern, and the labels are shown for each block.
 # som_visualizer.plot(grid_type='square', label_type='block')

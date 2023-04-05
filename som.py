@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, List, Tuple
+from typing import Any, List, Tuple, Union
 
 import numpy as np
 from numpy import ndarray
@@ -27,7 +27,12 @@ class SOM:
         self.learning_rate = learning_rate
         self.weights = None
         self.data = None
+        self._topology = topology
         self.topology_function = self._get_topology_function(topology)
+
+    @property
+    def topology(self) -> str | callable:
+        return self._topology
 
     def set_data(self, data) -> None:
         self.data = data
@@ -234,3 +239,67 @@ class SOM:
         r = np.sqrt(dx ** 2 + dy ** 2)
         theta = np.arctan2(dy, dx)
         return r, theta
+
+    def get_cluster_count(self) -> int:
+        """
+        Get the number of clusters in the trained SOM.
+
+        :return: The number of clusters in the trained SOM.
+        """
+        unique_weights = np.unique(self.weights.reshape(-1, self.input_dim), axis=0)
+        return len(unique_weights)
+
+    def winner(self, data_points: Union[np.ndarray, np.ndarray]) -> np.ndarray:
+        """
+        Find the winning node(s) in the SOM for the given data point(s).
+
+        :param data_points: A single data point or an array of data points with shape (n_points, n_features).
+        :return: The coordinates of the winning node(s) as an array of shape (n_points, 2).
+                 If only one data point is provided, a 1D array of shape (2,) is returned.
+        """
+        data_points = np.asarray(data_points)
+        if data_points.ndim == 1:
+            data_points = data_points[np.newaxis, :]
+
+        # Calculate Euclidean distances between each data point and the nodes in the weights matrix
+        distances = np.linalg.norm(self.weights - data_points[:, np.newaxis, np.newaxis, :], axis=-1)
+
+        # Find the indices of the minimum distance(s) in the flattened distances array
+        winner_indices = np.argmin(distances.reshape(data_points.shape[0], -1), axis=1)
+
+        # Convert the indices of the minimum distance(s) to coordinates of the winning node(s)
+        winner_coordinates = np.column_stack(np.unravel_index(winner_indices, self.weights.shape[:2]))
+
+        if winner_coordinates.shape[0] == 1:
+            return winner_coordinates[0]
+        else:
+            return winner_coordinates
+
+    def distance_map(self) -> np.ndarray:
+        """
+        Calculate the distance map of the SOM.
+        
+        Returns:
+            np.ndarray: A 2D numpy array representing the distance map.
+        """
+        size_x, size_y = self.weights.shape[0], self.weights.shape[1]
+        um = np.zeros((size_x, size_y, 8))
+
+        # Left neighbor
+        um[1:, :, 0] = np.linalg.norm(self.weights[1:, :] - self.weights[:-1, :], axis=2)
+        # Right neighbor
+        um[:-1, :, 1] = np.linalg.norm(self.weights[:-1, :] - self.weights[1:, :], axis=2)
+        # Top neighbor
+        um[:, 1:, 2] = np.linalg.norm(self.weights[:, 1:] - self.weights[:, :-1], axis=2)
+        # Bottom neighbor
+        um[:, :-1, 3] = np.linalg.norm(self.weights[:, :-1] - self.weights[:, 1:], axis=2)
+        # Top-left neighbor
+        um[1:, 1:, 4] = np.linalg.norm(self.weights[1:, 1:] - self.weights[:-1, :-1], axis=2)
+        # Bottom-right neighbor
+        um[:-1, :-1, 5] = np.linalg.norm(self.weights[:-1, :-1] - self.weights[1:, 1:], axis=2)
+        # Top-right neighbor
+        um[:-1, 1:, 6] = np.linalg.norm(self.weights[:-1, 1:] - self.weights[1:, :-1], axis=2)
+        # Bottom-left neighbor
+        um[1:, :-1, 7] = np.linalg.norm(self.weights[1:, :-1] - self.weights[:-1, 1:], axis=2)
+
+        return um.mean(axis=2)
