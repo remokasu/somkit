@@ -231,8 +231,8 @@ class SOMVisualizer:
         plt.figure(figsize=(self.som.weights.shape[0], self.som.weights.shape[1]))
         plt.pcolor(self.som.distance_map().T, cmap='bone_r', edgecolors='k', linewidths=1)
 
-        font_size = min(self.som.weights.shape[0], self.som.weights.shape[1]) * 2
-        self.font_prop = FontProperties(size=font_size)
+        # font_size = min(self.som.weights.shape[0], self.som.weights.shape[1]) * 2
+        # self.font_prop = FontProperties(size=font_size)
 
         winner_map = self.create_winner_map()
 
@@ -258,7 +258,11 @@ class SOMVisualizer:
         if show_legend:
             legend_elements = [Patch(facecolor=plt.cm.tab10(float(i) / len(self.target_names)), edgecolor='k',
                                     label=self.target_names[i]) for i in range(len(self.target_names))]
-            plt.legend(handles=legend_elements, loc='upper right', prop=self.font_prop)
+            # plt.legend(handles=legend_elements, loc='upper right', prop=self.font_prop)
+            plt.legend(
+                handles=legend_elements, loc='upper left',
+                bbox_to_anchor=(1.05, 1), prop=self.font_prop
+            )
 
         plt.xticks(np.arange(self.som.weights.shape[0]) + 0.5, [])
         plt.yticks(np.arange(self.som.weights.shape[1]) + 0.5, [])
@@ -267,38 +271,49 @@ class SOMVisualizer:
     def plot_hexagonal_som_labels(self, label_type: str, show_legend: bool = True):
         plt.figure(figsize=(self.som.weights.shape[0], self.som.weights.shape[1]))
 
-        font_size = min(self.som.weights.shape[0], self.som.weights.shape[1]) * 2
-        self.font_prop = FontProperties(size=font_size)
+        # font_size = 10 * (1 / np.sqrt(self.som.weights.shape[0] * self.som.weights.shape[1]))
+        # self.font_prop.set_size(font_size)
 
-        distance_map = self.som.distance_map()
-        for i in range(distance_map.shape[0]):
-            for j in range(distance_map.shape[1]):
-                hexagon = RegularPolygon((i * 1.5 + 0.5 * (j % 2), j * np.sqrt(3) / 2), numVertices=6, radius=0.5, edgecolor='k', linewidth=1, facecolor=plt.cm.bone_r(distance_map[i, j]))
+        distance_map = self.som.distance_map().T
+
+        for i in range(self.som.weights.shape[1]):
+            for j in range(self.som.weights.shape[0]):
+                color = plt.cm.bone_r(distance_map[i, j])
+                y_shift = np.sqrt(3) / 2 * (j % 2)
+                hexagon = RegularPolygon((j * 1.5, i * np.sqrt(3) / 2 + y_shift), numVertices=6, radius=0.5, edgecolor='k', linewidth=1, facecolor=color)
                 plt.gca().add_patch(hexagon)
 
         winner_map = self.create_winner_map()
 
         if label_type == "cluster":
             for i, (x, y) in enumerate(winner_map.keys()):
-                plt.text(x * 1.5 + 0.5 * (y % 2), y * np.sqrt(3) / 2, self.target_names[self.target[i]],
+                y_shift = np.sqrt(3) / 2 * (y % 2)
+                plt.text(y * 1.5, x * np.sqrt(3) / 2 + y_shift, self.target_names[self.target[i]],
                         color=plt.cm.tab10(float(self.target[i]) / len(self.target_names)),
                         fontproperties=self.font_prop,
                         ha='center', va='center')
+
         elif label_type == "block":
             for (x, y), data_indices in winner_map.items():
                 labels, counts = np.unique(self.target[data_indices], return_counts=True)
                 most_frequent_label = labels[np.argmax(counts)]
-                plt.text(x * 1.5 + 0.5 * (y % 2), y * np.sqrt(3) / 2, self.target_names[most_frequent_label],
+                y_shift = np.sqrt(3) / 2 * (y % 2)
+                plt.text(y * 1.5, x * np.sqrt(3) / 2 + y_shift, self.target_names[most_frequent_label],
                         color=plt.cm.tab10(float(most_frequent_label) / len(self.target_names)),
                         fontproperties=self.font_prop,
                         ha='center', va='center')
+
         else:
             raise ValueError("Invalid label_type. Supported label types are 'cluster' and 'block'.")
 
         if show_legend:
             legend_elements = [Patch(facecolor=plt.cm.tab10(float(i) / len(self.target_names)), edgecolor='k',
                                     label=self.target_names[i]) for i in range(len(self.target_names))]
-            plt.legend(handles=legend_elements, loc='upper right', prop=self.font_prop)
+            # plt.legend(handles=legend_elements, loc='upper right', prop=self.font_prop)
+            plt.legend(
+                handles=legend_elements, loc='upper left',
+                bbox_to_anchor=(1.05, 1), prop=self.font_prop
+            )
 
         plt.xticks([])
         plt.yticks([])
