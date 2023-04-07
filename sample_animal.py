@@ -1,13 +1,22 @@
 from sklearn.preprocessing import StandardScaler
 
 from som import SOM
+from som_evaluator import SOMEvaluator
 from som_pak_data_loader import SOMPakDataLoader
 from som_visualizer import SOMVisualizer
 
+epochs = 1
 topology = 'rectangular'
 # topology = 'hexagonal'
 # topology = 'circular'
 # topology = 'ring'
+
+neighborhood_function = "gaussian"
+# neighborhood_function = "mexican_hat"
+# neighborhood_function = "bubble"
+# neighborhood_function = "cone"
+
+learning_rate = 0.01
 initial_radius = 0.02
 final_radius = 3
 
@@ -28,8 +37,8 @@ som = SOM(
     x_size=10,
     y_size=10,
     input_dim=data.shape[1],
-    epochs=100,
-    learning_rate=0.01,
+    epochs=epochs,
+    learning_rate=learning_rate,
     initial_radius=initial_radius,
     final_radius=final_radius,
     topology=topology
@@ -67,9 +76,12 @@ som_visualizer.plot(grid_type=topology, label_type='cluster')
 
 ## The plot is displayed with a hexagonal grid pattern, and the labels are shown for each block.
 # som_visualizer.plot(grid_type='hexagonal', label_type='block')
-wcss = som.calculate_wcss()
-silhouette = som.calculate_silhouette_score()
-topological_error = som.calculate_topological_error()
+
+evaluator = SOMEvaluator(som)
+
+wcss = evaluator.calculate_wcss()
+silhouette = evaluator.calculate_silhouette_score()
+topological_error = evaluator.calculate_topological_error()
 
 print("WCSS: ", wcss)
 print("Silhouette Score: ", silhouette)

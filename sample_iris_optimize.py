@@ -3,6 +3,7 @@ from sklearn.datasets import load_iris
 from sklearn.preprocessing import StandardScaler
 
 from som import SOM
+from som_evaluator import SOMEvaluator
 from som_visualizer import SOMVisualizer
 
 
@@ -16,6 +17,7 @@ def objective(trial):
     initial_radius = trial.suggest_float("initial_radius", 0.0001, 0.999)
     final_radius = trial.suggest_float("initial_radius", 1, 10)
     learning_rate = trial.suggest_float("learning_rate", 0.0001, 0.999)
+    neighborhood_function = trial.suggest_categorical("neighborhood_function", ["gaussian", "mexican_hat", "bubble", "cone"])
 
     epochs = 100
     x_size = 10
@@ -43,16 +45,18 @@ def objective(trial):
         learning_rate=learning_rate,
         initial_radius=initial_radius,
         final_radius=final_radius,
-        topology=topology
+        topology=topology,
+        neighborhood_function=neighborhood_function
     )
 
     som.set_data(data)
     som.initialize_weights_with_pca()
     som.train()
 
-    wcss = som.calculate_wcss()  # to minimize
-    silhouette = som.calculate_silhouette_score()  # to maximize
-    topological_error = som.calculate_topological_error() # to minimize
+    evaluator = SOMEvaluator(som)
+    wcss = evaluator.calculate_wcss()  # to minimize
+    silhouette = evaluator.calculate_silhouette_score()  # to maximize [-1 ~ 1]
+    topological_error = evaluator.calculate_topological_error() # to minimize
 
     print("WCSS: ", wcss)
     print("Silhouette Score: ", silhouette)

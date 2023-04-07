@@ -1,4 +1,0 @@
-.
-├── som.py  # SOM class
-├── visualizer.py  # SOMVisualizer class
-└── neighborhood_functions.py  # NeighborhoodFunction and its subclasses
