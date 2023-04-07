@@ -5,7 +5,7 @@ from sklearn.utils import Bunch
 
 
 class SOMPakDataLoader:
-    def __init__(self, filepath: str, encoding=None) -> None:
+    def __init__(self, filepath: str) -> None:
         """
         A class for converting SOM_PAK format data to the format of sklearn.datasets.
 
@@ -13,11 +13,30 @@ class SOMPakDataLoader:
         :param encoding : The encoding of the SOM_PAK format data
         """
         self.filepath = filepath
-        self.encoding = encoding
 
     def load_data(self) -> Bunch:
         """
         Convert SOM_PAK format data to the format of sklearn.datasets.
+
+        SOM_PAK format example.
+
+            16
+            1 0 0 0 1 0 0 0 0 1 0 0 0 1 0 0.5 dove
+            0 1 0 0.5 0 1 1 0 0 0 0 1 0 0 0 0 fox
+            1 0 0 0 1 0 0 0 0 1 0 0 0 0 0 0.5 hen
+            0 0 1 0 0 1 1 0 1 0 0 1 1 0 0 0 lion
+            1 0 0 0 1 0 0 0 0 1 0 0 0 1 1 0.5 goose
+            0 1 0 0 1 0 0 0 0 1 0 1 0 0 0 0 eagle
+            0 1 0 0 0 1 1 0 0 0 0 0 1 0 0 0 dog
+            0 1 0 1 0 1 1 0 1 0 0 1 1 0 0 0 wolf
+            0 0 1 0 0 1 1 1 1 0 1 0 1 0 0 1 zebra
+            1 0 0 0 1 0 0 0 0 1 0.3 0 0 1 1 0.5 duck
+            1 0 0 0.5 0 1 1 0 0 0 0 1 0 0 0 0 cat
+            1 0 0 1 1 0 0 0 0 1 0 1 0 1 0 0 owl
+            0 0 1 0.5 0 1 1 0 0 0 1 1 1 0 0 0 tiger
+            0 0 1 0 0 1 1 1 1 0 0 0 1 0 0 1 horse
+            1 0 0 0 1 0 0 0 0 1 0 1 0 1 0 0 hawk
+            0 0 1 0 0 1 1 1 0 0 0 0 0 0 0 1 cow
 
         Returns
         -------
@@ -26,12 +45,8 @@ class SOMPakDataLoader:
             It has four keys: 'data', 'target', 'feature_names', 'target_names'.
         """
         # Load SOM_PAK format data
-        if self.encoding is None:
-            with open(self.filepath, 'r') as f:
-                data = f.readlines()
-        else:
-            with open(self.filepath, 'r', encoding=self.encoding) as f:
-                data = f.readlines()
+        with open(self.filepath, 'r') as f:
+            data = f.readlines()
 
         # Get the number of dimensions
         num_features = int(data[0].strip())
