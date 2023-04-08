@@ -7,10 +7,9 @@ from som_visualizer import SOMVisualizer
 x_size = 10
 y_size = 10
 epochs = 1000
-topology = 'rectangular'
-# topology = 'hexagonal'
-# topology = 'circular'
-neighborhood_function = "gaussian"
+topology = 'hexagonal'
+# topology = 'rectangular'
+neighborhood_function = "bubble"
 # neighborhood_function = "gaussian"
 # neighborhood_function = "mexican_hat"
 # neighborhood_function = "cone"

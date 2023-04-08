@@ -9,38 +9,28 @@ from som_visualizer import SOMVisualizer
 
 def objective(trial):
 
-    topology = 'rectangular'
-
-    # epochs = trial.suggest_int("epochs", 30, 100)
-    # x_size = trial.suggest_int("x_size", 10, 100)
-    # y_size = trial.suggest_int("y_size", 10, 100)
+    epochs = trial.suggest_int("epochs", 30, 100)
+    x_size = trial.suggest_int("x_size", 10, 100)
+    y_size = x_size
+    # x_size = trial.suggest_int("y_size", 10, 100)
     initial_radius = trial.suggest_float("initial_radius", 0.0001, 0.999)
     final_radius = trial.suggest_float("initial_radius", 1, 10)
     learning_rate = trial.suggest_float("learning_rate", 0.0001, 0.999)
-    neighborhood_function = trial.suggest_categorical("neighborhood_function", ["gaussian", "mexican_hat", "bubble", "cone"])
-
-    epochs = 100
-    x_size = 10
-    y_size = 10
-    # initial_radius = 0.02
-    # final_radius = 3
-    # learning_rate = 0.01
+    topology = trial.suggest_categorical("topology", ["hexagonal", "rectangular"])
+    neighborhood_function = trial.suggest_categorical("rectangular", ["gaussian", "mexican_hat", "bubble", "cone"])
 
     # Load the iris dataset
     iris = load_iris()
-    data = iris.data
-    # target = iris.target  # for visualizer
-    # target_names = iris.target_names  # for visualizer
 
-    # Normalize the data
-    scaler = StandardScaler()
-    data = scaler.fit_transform(data)
+    # Get the input dimension (number of features) of the dataset
+    input_dim = iris.data.shape[1]
 
-    # Create an instance of SOM
+    # Create an instance of SOM with the specified parameters
     som = SOM(
+        data=iris,
         x_size=x_size,
         y_size=y_size,
-        input_dim=data.shape[1],
+        input_dim=input_dim,
         epochs=epochs,
         learning_rate=learning_rate,
         initial_radius=initial_radius,
@@ -49,14 +39,24 @@ def objective(trial):
         neighborhood_function=neighborhood_function
     )
 
-    som.set_data(data)
-    som.initialize_weights_with_pca()
+    # Standardize the input data
+    som.standardize_data()
+
+    # Initialize the weights using random values
+    som.initialize_weights_randomly()
+
+    # or
+    # Initialize the weights using PCA
+    # som.initialize_weights_with_pca()
+
+    # Train the SOM using the input data
     som.train()
 
+    # Evaluate the trained SOM using various metrics
     evaluator = SOMEvaluator(som)
-    wcss = evaluator.calculate_wcss()  # to minimize
-    silhouette = evaluator.calculate_silhouette_score()  # to maximize [-1 ~ 1]
-    topological_error = evaluator.calculate_topological_error() # to minimize
+    wcss = evaluator.calculate_wcss()
+    silhouette = evaluator.calculate_silhouette_score()
+    topological_error = evaluator.calculate_topological_error()
 
     print("WCSS: ", wcss)
     print("Silhouette Score: ", silhouette)
@@ -67,5 +67,5 @@ def objective(trial):
 
 if __name__ == "__main__":
     study = optuna.create_study(directions=["minimize", "maximize", "minimize"])
-    study.optimize(objective, n_trials=100)
-    print(study.best_trial)
+    study.optimize(objective, n_trials=1)
+    print(study.best_trials)

@@ -9,11 +9,10 @@ from som_visualizer import SOMVisualizer
 x_size = 10
 y_size = 10
 epochs = 1000
-topology = 'rectangular'
-# topology = 'hexagonal'
-# topology = 'circular'
-neighborhood_function = "bubble"
-# neighborhood_function = "gaussian"
+topology = 'hexagonal'
+# topology = 'rectangular'
+neighborhood_function = "gaussian"
+# neighborhood_function = "bubble"
 # neighborhood_function = "mexican_hat"
 # neighborhood_function = "cone"
 learning_rate = 0.01
@@ -36,7 +35,8 @@ som = SOM(
     learning_rate=learning_rate,
     initial_radius=initial_radius,
     final_radius=final_radius,
-    topology=topology
+    topology=topology,
+    neighborhood_function=neighborhood_function
 )
 
 # Standardize the input data
