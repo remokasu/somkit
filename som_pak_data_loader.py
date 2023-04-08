@@ -18,7 +18,6 @@ class SOMPakDataLoader:
         A class for converting SOM_PAK format data to the format of sklearn.datasets.
 
         :param filepath : The file path of the SOM_PAK format data.
-        :param encoding : The encoding of the SOM_PAK format data
         """
         self.filepath = filepath
 

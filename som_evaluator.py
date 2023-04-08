@@ -16,7 +16,6 @@ class SOMEvaluator:
         """
         Calculate the Within-Cluster Sum of Squares (WCSS) for the SOM.
 
-        :param data: A 2D numpy array containing the input data. If not provided, the data used during training is used.
         :return: The WCSS for the SOM.
         """
         bmus_idx = self.som._get_bmus(self.data)
@@ -52,13 +51,13 @@ class SOMEvaluator:
         try:
             return silhouette_score(self.data, labels)
         except ValueError as e:
-            # エラーが発生した場合、デフォルト値を返す
+            # If an error occurs, return a default value
             print(f"Warning: {e}")
 
-            # 注意: デフォルト値は適切に選択する必要があります。シルエットスコアは -1（最悪）から
-            # 1（最適）までの範囲で評価されるため、-1.0 はクラスタリングが失敗した場合に適切な値と
-            # 考えられます。最適化プロセスが適切に機能するためには、選択したデフォルト値が問題の
-            # コンテキストに適していることを確認してください。
+            # Note: The default value should be chosen appropriately. Since the silhouette score is evaluated
+            # in the range of -1 (worst) to 1 (optimal), -1.0 can be considered as an appropriate value when
+            # clustering fails. Make sure the chosen default value is suitable for the context of the problem
+            # to ensure the optimization process functions properly.
             return -1.0
 
     def calculate_topological_error(self) -> float:

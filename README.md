@@ -44,9 +44,12 @@ python sample_animal.py
 - `animal.dat`: A sample dataset containing animal features in the SOM_PAK format.
 - `sample_animal.py`: A sample program that trains a SOM using the `animal.dat` dataset and visualizes the results.
 - `sample_iris.py`: A sample program that trains a SOM using the Iris dataset and visualizes the results.
-- `som_pak_data_loader.py`: A module for loading data in the SOM_PAK format and converting it to a format suitable for training with PySOM.
-- `som_visualizer.py`: A module for visualizing the trained SOM, including the grid and cluster/block labels.
-- `som.py`: The main module containing the implementation of the Self-Organizing Map algorithm.
+- `som.py`: The main SOM implementation.
+- `som_evaluator.py`: A module for evaluating the trained SOM using various metrics.
+- `som_pak_data_loader.py`: A module for loading data from the SOM_PAK data format.
+- `som_topology.py`: A module for handling different SOM topologies.
+- `som_visualizer.py`: A module for visualizing the trained SOM using U-Matrix plots.
+- `son_neighborhood_functions.py`: A module for defining different neighborhood functions.
 
 Feel free to customize the sample programs or create your own to suit your specific needs.
 
