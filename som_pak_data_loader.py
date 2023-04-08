@@ -4,6 +4,16 @@ import numpy as np
 from sklearn.utils import Bunch
 
 
+class DatasetWrapper:
+    def __init__(self, dataset):
+        if not hasattr(dataset, 'data') or not hasattr(dataset, 'target') or not hasattr(dataset, 'target_names'):
+            raise ValueError("Input dataset must have attributes: 'data', 'target', and 'target_names'.")
+
+        self.data = dataset.data
+        self.target = dataset.target
+        self.target_names = dataset.target_names
+
+
 class SOMPakDataLoader:
     def __init__(self, filepath: str) -> None:
         """
@@ -75,4 +85,4 @@ class SOMPakDataLoader:
         # Convert the data to the format of sklearn.datasets
         data = Bunch(data=np.array(X), target=y_numeric, feature_names=[f'feature_{i+1}' for i in range(num_features)],
                      target_names=list(label_map_inv.values()))
-        return data
+        return DatasetWrapper(data)

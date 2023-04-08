@@ -5,38 +5,33 @@ from som import SOM
 from som_evaluator import SOMEvaluator
 from som_visualizer import SOMVisualizer
 
+# Set SOM parameters
 x_size = 10
 y_size = 10
-epochs = 1
+epochs = 1000
 topology = 'rectangular'
 # topology = 'hexagonal'
 # topology = 'circular'
-# topology = 'ring'
-
-neighborhood_function = "gaussian"
+neighborhood_function = "bubble"
+# neighborhood_function = "gaussian"
 # neighborhood_function = "mexican_hat"
-# neighborhood_function = "bubble"
 # neighborhood_function = "cone"
-
 learning_rate = 0.01
 initial_radius = 0.02
 final_radius = 3
 
 # Load the iris dataset
 iris = load_iris()
-data = iris.data
-target = iris.target
-target_names = iris.target_names
 
-# Normalize the data
-scaler = StandardScaler()
-data = scaler.fit_transform(data)
+# Get the input dimension (number of features) of the dataset
+input_dim = iris.data.shape[1]
 
-# Create an instance of SOM
+# Create an instance of SOM with the specified parameters
 som = SOM(
+    data=iris,
     x_size=x_size,
     y_size=y_size,
-    input_dim=data.shape[1],
+    input_dim=input_dim,
     epochs=epochs,
     learning_rate=learning_rate,
     initial_radius=initial_radius,
@@ -44,21 +39,20 @@ som = SOM(
     topology=topology
 )
 
-# # Set the input data for the SOM
-som.set_data(data)
+# Standardize the input data
+som.standardize_data()
 
-# # Initialize the weights using random values
+# Initialize the weights using random values
 som.initialize_weights_randomly()
 
 # or
 # Initialize the weights using PCA
 # som.initialize_weights_with_pca()
 
-
-# # Train the SOM using the input data
+# Train the SOM using the input data
 som.train()
 
-# Evaluate
+# Evaluate the trained SOM using various metrics
 evaluator = SOMEvaluator(som)
 wcss = evaluator.calculate_wcss()
 silhouette = evaluator.calculate_silhouette_score()
@@ -68,12 +62,8 @@ print("WCSS: ", wcss)
 print("Silhouette Score: ", silhouette)
 print("Topological Error: ", topological_error)
 
+# Visualize the SOM using the U-Matrix plot
+som_visualizer = SOMVisualizer(som)
 
-# # Visualize the SOM
-som_visualizer = SOMVisualizer(som, data, target, target_names)
-
-# # If you need to specify a ttf file, write
-# # som_visualizer = SOMVisualizer(som, data, target, target_names, font_path="./fonts/ipaexg.ttf")
-
-# plot
+# plot the U-Matrix with data points
 som_visualizer.plot_umatrix(show_data_points=True)

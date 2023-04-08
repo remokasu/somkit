@@ -6,15 +6,17 @@ import numpy as np
 from numpy import ndarray
 from sklearn.decomposition import PCA
 from sklearn.metrics import silhouette_score
+from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
 
 from neighborhood_functions import create_neighborhood_function
+from som_pak_data_loader import DatasetWrapper
 from som_topology import SOMTopology
 
 
 class SOM:
     def __init__(
-        self, x_size: int, y_size: int, input_dim: int,
+        self, data, x_size: int, y_size: int, input_dim: int,
         epochs: int, learning_rate: float, initial_radius: float, final_radius: float,
         topology: str | callable = 'rectangular',
         neighborhood_function: str = "gaussian",
@@ -29,6 +31,10 @@ class SOM:
         :param epochs: The number of epochs for training.
         :param learning_rate: The initial learning rate for weight updates.
         """
+        self.data = data.data
+        self.target = data.target
+        self.target_names = data.target_names
+
         self.x_size = x_size
         self.y_size = y_size
         self.input_dim = input_dim
@@ -37,14 +43,17 @@ class SOM:
         self.initial_radius = initial_radius
         self.final_radius = final_radius
         self.weights = None
-        self.data = None
         self._topology = topology
         self.topology = SOMTopology(topology)
         self.neighborhood_function = create_neighborhood_function(neighborhood_function)
         self.neighborhood_width = neighborhood_width
 
-    def set_data(self, data) -> None:
-        self.data = data
+    def get_data(self):
+        return self.data
+
+    def standardize_data(self):
+        scaler = StandardScaler()
+        self.data = scaler.fit_transform(self.data)
 
     def initialize_weights_randomly(self) -> None:
         """_summary_

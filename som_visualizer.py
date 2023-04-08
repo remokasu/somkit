@@ -10,11 +10,11 @@ from som import SOM
 
 
 class SOMVisualizer:
-    def __init__(self, som: SOM, data: np.ndarray, target: np.ndarray, target_names: List[str], font_path: str = None):
+    def __init__(self, som: SOM, font_path: str = None):
         self.som = som
-        self.data = data
-        self.target = target
-        self.target_names = target_names
+        self.data = som.data
+        self.target = som.target
+        self.target_names = som.target_names
         self.font_path = font_path
         if self.font_path is not None:
             self.font_prop = FontProperties(fname=font_path)
