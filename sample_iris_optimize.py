@@ -1,10 +1,8 @@
 import optuna
 from sklearn.datasets import load_iris
-from sklearn.preprocessing import StandardScaler
 
 from som import SOM
 from som_evaluator import SOMEvaluator
-from som_visualizer import SOMVisualizer
 
 
 def objective(trial):

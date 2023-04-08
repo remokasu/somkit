@@ -9,9 +9,8 @@ from sklearn.metrics import silhouette_score
 from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
 
-from neighborhood_functions import create_neighborhood_function
-from som_pak_data_loader import DatasetWrapper
 from som_topology import SOMTopology
+from son_neighborhood_functions import create_neighborhood_function
 
 
 class SOM:

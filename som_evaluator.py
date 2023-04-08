@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import Tuple
 
 import numpy as np
 from sklearn.metrics import silhouette_score
@@ -60,8 +60,6 @@ class SOMEvaluator:
             # 考えられます。最適化プロセスが適切に機能するためには、選択したデフォルト値が問題の
             # コンテキストに適していることを確認してください。
             return -1.0
-
-
 
     def calculate_topological_error(self) -> float:
         num_incorrect_topology = 0
