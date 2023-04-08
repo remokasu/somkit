@@ -5,7 +5,9 @@ from som_evaluator import SOMEvaluator
 from som_pak_data_loader import SOMPakDataLoader
 from som_visualizer import SOMVisualizer
 
-epochs = 1
+x_size = 10
+y_size = 10
+epochs = 1000
 topology = 'rectangular'
 # topology = 'hexagonal'
 # topology = 'circular'
@@ -34,8 +36,8 @@ data = scaler.fit_transform(data)
 
 # Create an instance of SOM
 som = SOM(
-    x_size=10,
-    y_size=10,
+    x_size=x_size,
+    y_size=y_size,
     input_dim=data.shape[1],
     epochs=epochs,
     learning_rate=learning_rate,
@@ -59,24 +61,7 @@ som.initialize_weights_randomly()
 # Train the SOM using the input data
 som.train()
 
-# Visualize the SOM
-som_visualizer = SOMVisualizer(som, data, target, target_names)
-
-# If you need to specify a ttf file, write
-# som_visualizer = SOMVisualizer(som, data, target, target_names, font_path="./fonts/ipaexg.ttf")
-
-## The plot is displayed in a grid pattern, and the labels are shown for each cluster.
-som_visualizer.plot(grid_type=topology, label_type='cluster')
-
-## The plot is displayed in a grid pattern, and the labels are shown for each block.
-# som_visualizer.plot(grid_type='square', label_type='block')
-
-## The plot is displayed with a hexagonal grid pattern, and the labels are shown for each cluster.
-# som_visualizer.plot(grid_type='hexagonal', label_type='cluster')
-
-## The plot is displayed with a hexagonal grid pattern, and the labels are shown for each block.
-# som_visualizer.plot(grid_type='hexagonal', label_type='block')
-
+# Evaluate
 evaluator = SOMEvaluator(som)
 
 wcss = evaluator.calculate_wcss()
@@ -86,3 +71,9 @@ topological_error = evaluator.calculate_topological_error()
 print("WCSS: ", wcss)
 print("Silhouette Score: ", silhouette)
 print("Topological Error: ", topological_error)
+
+# Visualize the SOM
+som_visualizer = SOMVisualizer(som, data, target, target_names)
+
+# plot
+som_visualizer.plot_umatrix(show_data_points=True)

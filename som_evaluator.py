@@ -48,7 +48,20 @@ class SOMEvaluator:
             labels[i] = np.ravel_multi_index(winner_node, self.weights.shape[:2])
 
         # Calculate and return the silhouette score using the data points and their assigned labels
-        return silhouette_score(self.data, labels)
+        # return silhouette_score(self.data, labels)
+        try:
+            return silhouette_score(self.data, labels)
+        except ValueError as e:
+            # エラーが発生した場合、デフォルト値を返す
+            print(f"Warning: {e}")
+
+            # 注意: デフォルト値は適切に選択する必要があります。シルエットスコアは -1（最悪）から
+            # 1（最適）までの範囲で評価されるため、-1.0 はクラスタリングが失敗した場合に適切な値と
+            # 考えられます。最適化プロセスが適切に機能するためには、選択したデフォルト値が問題の
+            # コンテキストに適していることを確認してください。
+            return -1.0
+
+
 
     def calculate_topological_error(self) -> float:
         num_incorrect_topology = 0
