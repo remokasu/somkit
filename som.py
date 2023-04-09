@@ -7,16 +7,25 @@ from numpy import ndarray
 from sklearn.decomposition import PCA
 from sklearn.metrics import silhouette_score
 from sklearn.preprocessing import StandardScaler
+from sklearn.utils._bunch import Bunch
 from tqdm import tqdm
 
+from som_pak_data_loader import DatasetWrapper
 from som_topology import SOMTopology
 from son_neighborhood_functions import create_neighborhood_function
 
 
 class SOM:
     def __init__(
-        self, data, x_size: int, y_size: int, input_dim: int,
-        epochs: int, learning_rate: float, initial_radius: float, final_radius: float,
+        self,
+        data: Bunch | DatasetWrapper | np.ndarray,
+        x_size: int,
+        y_size: int,
+        input_dim: int,
+        epochs: int,
+        learning_rate: float,
+        initial_radius: float,
+        final_radius: float,
         topology: str | callable = 'rectangular',
         neighborhood_function: str = "gaussian",
         neighborhood_width=1.0
@@ -30,9 +39,9 @@ class SOM:
         :param epochs: The number of epochs for training.
         :param learning_rate: The initial learning rate for weight updates.
         """
-        self.data = data.data
-        self.target = data.target
-        self.target_names = data.target_names
+        self.data = data.data if hasattr(data, 'data') and not isinstance(data, np.ndarray) else data
+        self.target = getattr(data, 'target', None)
+        self.target_names = getattr(data, 'target_names', None)
 
         self.x_size = x_size
         self.y_size = y_size
