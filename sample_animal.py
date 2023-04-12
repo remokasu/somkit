@@ -34,7 +34,8 @@ som = SOM(
     learning_rate=learning_rate,
     initial_radius=initial_radius,
     final_radius=final_radius,
-    topology=topology
+    topology=topology,
+    shuffle_each_epoch=True
 )
 
 # Standardize the input data

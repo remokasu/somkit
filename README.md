@@ -45,7 +45,7 @@ python sample_animal.py
 - `sample_animal.py`: A sample program that trains a SOM using the `animal.dat` dataset and visualizes the results.
 - `sample_iris.py`: A sample program that trains a SOM using the Iris dataset and visualizes the results.
 - `som.py`: The main SOM implementation.
-- `som_evaluator.py`: A module for evaluating the trained SOM using various metrics.
+- `som_evaluator.py`: A module for evaluating the trained SOM using various metrics.git
 - `som_pak_data_loader.py`: A module for loading data from the SOM_PAK data format.
 - `som_topology.py`: A module for handling different SOM topologies.
 - `som_visualizer.py`: A module for visualizing the trained SOM using U-Matrix plots.

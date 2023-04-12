@@ -38,6 +38,8 @@ som = SOM(
     neighborhood_function=neighborhood_function
 )
 
+som.shuffle_data()
+
 # Standardize the input data
 som.standardize_data()
 

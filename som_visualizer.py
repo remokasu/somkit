@@ -63,14 +63,6 @@ class SOMVisualizer:
         plt.show()
 
     def _plot_hexagonal_topology(self, umatrix, colormap, show_data_points, show_legend, _point_size, fontsize, ax):
-        """
-        Plot the U-Matrix of the trained SOM.
-
-        :param colormap: A string representing the colormap to be used for the U-Matrix visualization.
-        :param show_data_points: A boolean indicating whether to show the data points on the U-Matrix.
-        :param show_legend: A boolean indicating whether to show the legend for the data points.
-        """
-
         _point_size = 200
         patches = []
         hex_radius = 0.5  # Adjust this value to control the gap between hexagons
@@ -89,14 +81,16 @@ class SOMVisualizer:
                 winner_node = tuple(self.som.winner(data_point))
                 x = winner_node[1] + 0.5 * (winner_node[0] % 2)
                 y = winner_node[0] * 0.75
-                color = plt.cm.tab10(float(self.target[i]) / len(self.target_names))
-                plt.scatter(x, y, color=color, s=_point_size, marker='o', edgecolors='k')
-                plt.annotate(self.target_names[self.target[i]], (x, y), textcoords="offset points", xytext=(0, 10), ha='center', fontsize=fontsize, color='black', bbox=dict(facecolor='white', edgecolor='white', boxstyle='round,pad=0.1', alpha=0.8))
+                if self.target is not None and self.target_names is not None:
+                    color = plt.cm.tab10(float(self.target[i]) / len(self.target_names))
+                    plt.scatter(x, y, color=color, s=_point_size, marker='o', edgecolors='k')
+                    plt.annotate(self.target_names[self.target[i]], (x, y), textcoords="offset points", xytext=(0, 10), ha='center', fontsize=fontsize, color='black', bbox=dict(facecolor='white', edgecolor='white', boxstyle='round,pad=0.1', alpha=0.8))
+                else:
+                    plt.scatter(x, y, color='black', s=_point_size, marker='o', edgecolors='k')
 
-            if show_legend:
-                legend_elements = [Patch(facecolor=plt.cm.tab10(float(i) / len(self.target_names)), edgecolor='k',
-                                         label=self.target_names[i]) for i in range(len(self.target_names))]
-                plt.legend(handles=legend_elements, loc='upper left', bbox_to_anchor=(1.05, 1), prop=self.font_prop)
+        if show_legend and self.target is not None and self.target_names is not None:
+            legend_elements = [Patch(facecolor=plt.cm.tab10(float(i) / len(self.target_names)), edgecolor='k', label=self.target_names[i]) for i in range(len(self.target_names))]
+            plt.legend(handles=legend_elements, loc='upper left', bbox_to_anchor=(1.05, 1), prop=self.font_prop)
 
     def _plot_rectangular_topology(self, umatrix, colormap, show_data_points, show_legend, _point_size, fontsize, ax):
         im = ax.imshow(umatrix, cmap=colormap, aspect='auto')
@@ -105,10 +99,13 @@ class SOMVisualizer:
             for i, data_point in enumerate(self.data):
                 winner_node = tuple(self.som.winner(data_point))
                 x, y = winner_node[1], winner_node[0]
-                color = plt.cm.tab10(float(self.target[i]) / len(self.target_names))
-                plt.scatter(x, y, color=color, s=_point_size, marker='o', edgecolors='k')
-                plt.annotate(self.target_names[self.target[i]], (x, y), textcoords="offset points", xytext=(0, 10), ha='center', fontsize=fontsize, color='black', bbox=dict(facecolor='white', edgecolor='white', boxstyle='round,pad=0.1', alpha=0.8))
+                if self.target is not None and self.target_names is not None:
+                    color = plt.cm.tab10(float(self.target[i]) / len(self.target_names))
+                    plt.scatter(x, y, color=color, s=_point_size, marker='o', edgecolors='k')
+                    plt.annotate(self.target_names[self.target[i]], (x, y), textcoords="offset points", xytext=(0, 10), ha='center', fontsize=fontsize, color='black', bbox=dict(facecolor='white', edgecolor='white', boxstyle='round,pad=0.1', alpha=0.8))
+                else:
+                    plt.scatter(x, y, color='black', s=_point_size, marker='o', edgecolors='k')
 
-        if show_legend:
+        if show_legend and self.target is not None and self.target_names is not None:
             legend_elements = [Patch(facecolor=plt.cm.tab10(float(i) / len(self.target_names)), edgecolor='k', label=self.target_names[i]) for i in range(len(self.target_names))]
             plt.legend(handles=legend_elements, loc='upper left', bbox_to_anchor=(1.05, 1), prop=self.font_prop)

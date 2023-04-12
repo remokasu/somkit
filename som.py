@@ -28,7 +28,8 @@ class SOM:
         final_radius: float,
         topology: str | callable = 'rectangular',
         neighborhood_function: str = "gaussian",
-        neighborhood_width=1.0
+        neighborhood_width=1.0,
+        shuffle_each_epoch: bool=True
     ) -> None:
         """
         Initialize the Self-Organizing Map (SOM) with the given parameters.
@@ -39,6 +40,7 @@ class SOM:
         :param epochs: The number of epochs for training.
         :param learning_rate: The initial learning rate for weight updates.
         """
+        self._org_data = data
         self.data = data.data if hasattr(data, 'data') and not isinstance(data, np.ndarray) else data
         self.target = getattr(data, 'target', None)
         self.target_names = getattr(data, 'target_names', None)
@@ -55,9 +57,17 @@ class SOM:
         self.topology = SOMTopology(topology)
         self.neighborhood_function = create_neighborhood_function(neighborhood_function)
         self.neighborhood_width = neighborhood_width
+        self.shuffle_each_epoch = shuffle_each_epoch
 
     def get_data(self):
         return self.data
+
+    def shuffle_data(self):
+        indices = np.arange(len(self.data))
+        np.random.shuffle(indices)
+        self.data = self.data[indices]
+        if self.target is not None:
+            self.target = self.target[indices]
 
     def standardize_data(self):
         scaler = StandardScaler()
@@ -104,6 +114,8 @@ class SOM:
             self.initialize_weights_randomly()
 
         for epoch in tqdm(range(self.epochs)):
+            if self.shuffle_each_epoch:
+                self.shuffle_data()
             current_radius = self._decay_function(epoch)  # Update this line
             for sample in self.data:
                 bmu, bmu_idx = self._find_bmu(sample)
