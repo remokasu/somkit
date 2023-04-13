@@ -11,6 +11,7 @@ def objective(trial):
     x_size = trial.suggest_int("x_size", 10, 100)
     y_size = x_size
     # x_size = trial.suggest_int("y_size", 10, 100)
+    batch_size = trial.suggest_int("batch_sieze", 1, 64)
     initial_radius = trial.suggest_float("initial_radius", 0.0001, 0.999)
     final_radius = trial.suggest_float("initial_radius", 1, 10)
     learning_rate = trial.suggest_float("learning_rate", 0.0001, 0.999)
@@ -29,6 +30,7 @@ def objective(trial):
         x_size=x_size,
         y_size=y_size,
         input_dim=input_dim,
+        batch_size=batch_size,
         epochs=epochs,
         learning_rate=learning_rate,
         initial_radius=initial_radius,
@@ -65,5 +67,5 @@ def objective(trial):
 
 if __name__ == "__main__":
     study = optuna.create_study(directions=["minimize", "maximize", "minimize"])
-    study.optimize(objective, n_trials=1)
+    study.optimize(objective, n_trials=100)
     print(study.best_trials)

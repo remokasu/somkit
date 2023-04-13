@@ -4,7 +4,7 @@ import numpy as np
 from sklearn import datasets
 from sklearn.datasets import load_iris
 
-from som import SOM
+from ....som import SOM
 
 
 class TestSOM(unittest.TestCase):

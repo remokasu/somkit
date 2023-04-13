@@ -6,6 +6,7 @@ from som_visualizer import SOMVisualizer
 # Set SOM parameters
 x_size = 10
 y_size = 10
+batch_size = 32
 epochs = 1000
 topology = 'hexagonal'
 # topology = 'rectangular'
@@ -16,6 +17,7 @@ neighborhood_function = "bubble"
 learning_rate = 0.01
 initial_radius = 0.02
 final_radius = 3
+shuffle_each_epoch = True
 
 # Load the 'animal.dat' dataset using the SOMPakDataLoader
 loader = SOMPakDataLoader("animal.dat")
@@ -30,12 +32,13 @@ som = SOM(
     x_size=x_size,
     y_size=y_size,
     input_dim=input_dim,
+    batch_size=batch_size,
     epochs=epochs,
     learning_rate=learning_rate,
     initial_radius=initial_radius,
     final_radius=final_radius,
     topology=topology,
-    shuffle_each_epoch=True
+    shuffle_each_epoch=shuffle_each_epoch
 )
 
 # Standardize the input data

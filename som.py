@@ -22,6 +22,7 @@ class SOM:
         x_size: int,
         y_size: int,
         input_dim: int,
+        batch_size: int,
         epochs: int,
         learning_rate: float,
         initial_radius: float,
@@ -48,6 +49,7 @@ class SOM:
         self.x_size = x_size
         self.y_size = y_size
         self.input_dim = input_dim
+        self.batch_size = batch_size
         self.epochs = epochs
         self.learning_rate = learning_rate
         self.initial_radius = initial_radius
@@ -61,17 +63,6 @@ class SOM:
 
     def get_data(self):
         return self.data
-
-    def shuffle_data(self):
-        indices = np.arange(len(self.data))
-        np.random.shuffle(indices)
-        self.data = self.data[indices]
-        if self.target is not None:
-            self.target = self.target[indices]
-
-    def standardize_data(self):
-        scaler = StandardScaler()
-        self.data = scaler.fit_transform(self.data)
 
     def initialize_weights_randomly(self) -> None:
         """_summary_
@@ -102,24 +93,70 @@ class SOM:
         # Initialize the weight matrix using the first two principal components
         self.weights = np.tensordot(grid, two_principal_components, axes=1) + pca.mean_
 
+    def shuffle_data(self):
+        indices = np.arange(len(self.data))
+        np.random.shuffle(indices)
+        self.data = self.data[indices]
+        if self.target is not None:
+            self.target = self.target[indices]
+
+    def standardize_data(self):
+        scaler = StandardScaler()
+        self.data = scaler.fit_transform(self.data)
+
+    # def train(self) -> None:
+    #     """
+    #     Train the SOM using the given input data.
+
+    #     :param data: A 2D numpy array containing the input data.
+    #     """
+    #     assert self.data is not None, "Data must be set using 'set_data' before training."
+
+    #     if self.weights is None:
+    #         self.initialize_weights_randomly()
+
+    #     for epoch in tqdm(range(self.epochs)):
+    #         if self.shuffle_each_epoch:
+    #             self.shuffle_data()
+    #         current_radius = self._decay_function(epoch)  # Update this line
+    #         for sample in self.data:
+    #             bmu, bmu_idx = self._find_bmu(sample)
+    #             self._update_weights(sample, bmu_idx, epoch, current_radius)
+
+    #     self._compute_performance_metrics(self.data)
+
     def train(self) -> None:
         """
         Train the SOM using the given input data.
 
         :param data: A 2D numpy array containing the input data.
+        :param batch_size: The batch size for training. If None, online learning will be used.
         """
         assert self.data is not None, "Data must be set using 'set_data' before training."
 
         if self.weights is None:
             self.initialize_weights_randomly()
 
-        for epoch in tqdm(range(self.epochs)):
-            if self.shuffle_each_epoch:
-                self.shuffle_data()
-            current_radius = self._decay_function(epoch)  # Update this line
-            for sample in self.data:
-                bmu, bmu_idx = self._find_bmu(sample)
-                self._update_weights(sample, bmu_idx, epoch, current_radius)
+        if self.batch_size == 1:
+            # Online learning
+            for epoch in tqdm(range(self.epochs)):
+                if self.shuffle_each_epoch:
+                    self.shuffle_data()
+                current_radius = self._decay_function(epoch)
+                for sample in self.data:
+                    bmu, bmu_idx = self._find_bmu(sample)
+                    self._update_weights(sample, bmu_idx, epoch, current_radius)
+        else:
+            # Batch learning
+            for epoch in tqdm(range(self.epochs)):
+                if self.shuffle_each_epoch:
+                    self.shuffle_data()
+                current_radius = self._decay_function(epoch)
+                batch_indices = np.arange(0, self.data.shape[0], self.batch_size)
+                for batch_index in batch_indices:
+                    batch = self.data[batch_index:batch_index + self.batch_size]
+                    bmu_indices = [self._find_bmu(sample)[1] for sample in batch]
+                    self._update_weights_batch(batch, bmu_indices, epoch, current_radius)
 
         self._compute_performance_metrics(self.data)
 
@@ -152,6 +189,26 @@ class SOM:
         affected_weights = self.weights[affected_nodes[:, 0], affected_nodes[:, 1], :]
         new_weights = affected_weights + self.learning_rate * influence * (sample - affected_weights)
         self.weights[affected_nodes[:, 0], affected_nodes[:, 1], :] = new_weights
+
+    def _update_weights_batch(self, batch: np.ndarray, bmu_indices: List[Tuple[int, int]], epoch: int, current_radius: float) -> None:
+        x, y = np.meshgrid(np.arange(self.x_size), np.arange(self.y_size))
+        x = x.reshape(-1, 1)
+        y = y.reshape(-1, 1)
+
+        grid = np.concatenate((x, y), axis=1)
+
+        for sample, bmu_idx in zip(batch, bmu_indices):
+            distance = np.linalg.norm(grid - np.array(bmu_idx), axis=1)
+            influence = self.neighborhood_function(current_radius, distance, self.neighborhood_width)
+
+            mask = distance <= current_radius
+            influence = influence[mask].reshape(-1, 1)
+
+            affected_nodes = grid[mask]
+
+            affected_weights = self.weights[affected_nodes[:, 0], affected_nodes[:, 1], :]
+            new_weights = affected_weights + (self.learning_rate / len(batch)) * influence * (sample - affected_weights)
+            self.weights[affected_nodes[:, 0], affected_nodes[:, 1], :] = new_weights
 
     def _decay_function(self, epoch: int) -> float:
         """
