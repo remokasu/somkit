@@ -1,17 +1,29 @@
+import os
+import tempfile
 import unittest
 
 import numpy as np
 from sklearn import datasets
 from sklearn.datasets import load_iris
 
-from ....som import SOM
+from som import SOM
 
 
 class TestSOM(unittest.TestCase):
 
     def setUp(self):
         self.iris_data = datasets.load_iris()
-        self.som = SOM(self.iris_data, 10, 10, input_dim=4, epochs=100, learning_rate=0.5, initial_radius=5.0, final_radius=1.0)
+        self.som = SOM(
+            self.iris_data,
+            x_size=10,
+            y_size=10,
+            input_dim=4,
+            batch_size=1,
+            epochs=100,
+            learning_rate=0.5,
+            initial_radius=5.0,
+            final_radius=1.0
+        )
 
     def test_initialize_weights_randomly(self):
         self.som.initialize_weights_randomly()
@@ -61,6 +73,7 @@ class TestSOM(unittest.TestCase):
             x_size=2,
             y_size=2,
             input_dim=2,
+            batch_size=1,
             epochs=1,
             learning_rate=0.5,
             initial_radius=5.0,
@@ -86,6 +99,7 @@ class TestSOM(unittest.TestCase):
             x_size=2,
             y_size=2,
             input_dim=2,
+            batch_size=1,
             epochs=1,
             learning_rate=0.5,
             initial_radius=5.0,
@@ -104,6 +118,7 @@ class TestSOM(unittest.TestCase):
             x_size=2,
             y_size=2,
             input_dim=4,
+            batch_size=1,
             epochs=1,
             learning_rate=0.5,
             initial_radius=5.0,
@@ -126,6 +141,65 @@ class TestSOM(unittest.TestCase):
         for i in range(len(original_data)):
             original_index = np.where((original_data == shuffled_data[i]).all(axis=1))[0][0]
             assert original_target[original_index] == shuffled_target[i], "Data and target combination should be preserved during shuffling."
+
+    def test_save_and_load_checkpoint(self):
+        iris = load_iris()
+        # Create an SOM instance
+        som_original = SOM(
+            data=iris,
+            x_size=5,
+            y_size=5,
+            input_dim=4,
+            batch_size=1,
+            epochs=10,
+            learning_rate=0.5,
+            initial_radius=5.0,
+            final_radius=1.0,
+            shuffle_each_epoch=True
+        )
+
+        # Set the attributes for the instance
+        som_original.weights = np.random.rand(5, 5, 3)
+        som_original.quantization_error = 0.123
+        som_original.topological_error = 0.456
+        som_original.silhouette_coefficient = 0.789
+
+        epoch = 10
+        # Save the SOM instance to a temporary file
+        with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+            som_original.save_checkpoint(tmp_file.name, epoch)
+
+            # Load the SOM instance from the temporary file
+            # som_loaded = SOM(x_size=1, y_size=1, input_dim=1)  # Create a dummy SOM instance
+            som_loaded = SOM(
+                data=iris,
+                x_size=5,
+                y_size=5,
+                input_dim=4,
+                batch_size=1,
+                epochs=10,
+                learning_rate=0.5,
+                initial_radius=5.0,
+                final_radius=1.0,
+                shuffle_each_epoch=True
+            )
+            som_loaded.load_checkpoint(tmp_file.name)
+
+        # Check if the attributes are equal
+        assert som_original.x_size == som_loaded.x_size
+        assert som_original.y_size == som_loaded.y_size
+        assert som_original.input_dim == som_loaded.input_dim
+        assert np.allclose(som_original.weights, som_loaded.weights)
+        assert som_original._topology == som_loaded._topology
+        assert som_original.neighborhood_function.__name__ == som_loaded.neighborhood_function.__name__
+        assert som_original.neighborhood_width == som_loaded.neighborhood_width
+        assert som_original.quantization_error == som_loaded.quantization_error
+        assert som_original.topological_error == som_loaded.topological_error
+        assert som_original.silhouette_coefficient == som_loaded.silhouette_coefficient
+
+        # Delete the temporary file
+        os.remove(tmp_file.name)
+
 
 if __name__ == '__main__':
     unittest.main()

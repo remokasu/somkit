@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import os
 from typing import List, Tuple, Union
 
+import h5py
 import numpy as np
 from numpy import ndarray
 from sklearn.decomposition import PCA
@@ -30,7 +32,8 @@ class SOM:
         topology: str | callable = 'rectangular',
         neighborhood_function: str = "gaussian",
         neighborhood_width=1.0,
-        shuffle_each_epoch: bool=True
+        shuffle_each_epoch: bool = True,
+        checkpoint_interval: int = 1
     ) -> None:
         """
         Initialize the Self-Organizing Map (SOM) with the given parameters.
@@ -60,6 +63,14 @@ class SOM:
         self.neighborhood_function = create_neighborhood_function(neighborhood_function)
         self.neighborhood_width = neighborhood_width
         self.shuffle_each_epoch = shuffle_each_epoch
+
+        # Initialize performance metrics
+        self.quantization_error = None
+        self.topological_error = None
+        self.silhouette_coefficient = None
+
+        self.checkpoint_interval = checkpoint_interval
+        self.checkpoint_dir: str = 'checkpoints'
 
     def get_data(self):
         return self.data
@@ -104,27 +115,6 @@ class SOM:
         scaler = StandardScaler()
         self.data = scaler.fit_transform(self.data)
 
-    # def train(self) -> None:
-    #     """
-    #     Train the SOM using the given input data.
-
-    #     :param data: A 2D numpy array containing the input data.
-    #     """
-    #     assert self.data is not None, "Data must be set using 'set_data' before training."
-
-    #     if self.weights is None:
-    #         self.initialize_weights_randomly()
-
-    #     for epoch in tqdm(range(self.epochs)):
-    #         if self.shuffle_each_epoch:
-    #             self.shuffle_data()
-    #         current_radius = self._decay_function(epoch)  # Update this line
-    #         for sample in self.data:
-    #             bmu, bmu_idx = self._find_bmu(sample)
-    #             self._update_weights(sample, bmu_idx, epoch, current_radius)
-
-    #     self._compute_performance_metrics(self.data)
-
     def train(self) -> None:
         """
         Train the SOM using the given input data.
@@ -146,6 +136,13 @@ class SOM:
                 for sample in self.data:
                     bmu, bmu_idx = self._find_bmu(sample)
                     self._update_weights(sample, bmu_idx, epoch, current_radius)
+
+                # Save checkpoint at specified intervals
+                if epoch % self.checkpoint_interval == 0:
+                    os.makedirs(self.checkpoint_dir, exist_ok=True)
+                    checkpoint_path = os.path.join(self.checkpoint_dir, f'checkpoint_epoch_{epoch}.h5')
+                    self.save_checkpoint(checkpoint_path, epoch)
+
         else:
             # Batch learning
             for epoch in tqdm(range(self.epochs)):
@@ -157,6 +154,12 @@ class SOM:
                     batch = self.data[batch_index:batch_index + self.batch_size]
                     bmu_indices = [self._find_bmu(sample)[1] for sample in batch]
                     self._update_weights_batch(batch, bmu_indices, epoch, current_radius)
+
+                # Save checkpoint at specified intervals
+                if epoch % self.checkpoint_interval == 0:
+                    os.makedirs(self.checkpoint_dir, exist_ok=True)
+                    checkpoint_path = os.path.join(self.checkpoint_dir, f'checkpoint_epoch_{epoch}.h5')
+                    self.save_checkpoint(checkpoint_path, epoch)
 
         self._compute_performance_metrics(self.data)
 
@@ -336,3 +339,49 @@ class SOM:
         um[1:, :-1, 7] = np.linalg.norm(self.weights[1:, :-1] - self.weights[:-1, 1:], axis=2)
 
         return um.mean(axis=2)
+
+    # save
+
+    def save_checkpoint(self, file_path: str, epoch: int) -> None:
+        """
+        Save the model state to a checkpoint file.
+
+        :param file_path: The path to the checkpoint file.
+        :param epoch: The current epoch of training.
+        """
+        with h5py.File(file_path, 'w') as f:
+            f.attrs['x_size'] = self.x_size
+            f.attrs['y_size'] = self.y_size
+            f.attrs['input_dim'] = self.input_dim
+            f.create_dataset('weights', data=self.weights)
+            f.attrs['topology'] = self._topology
+            f.attrs['neighborhood_function'] = self.neighborhood_function.__name__
+            f.attrs['neighborhood_width'] = self.neighborhood_width
+            # f.attrs['quantization_error'] = self.quantization_error
+            # f.attrs['topological_error'] = self.topological_error
+            # f.attrs['silhouette_coefficient'] = self.silhouette_coefficient
+            f.create_dataset('quantization_error', data=self.quantization_error if self.quantization_error is not None else np.nan)
+            f.create_dataset('topological_error', data=self.topological_error if self.topological_error is not None else np.nan)
+            f.create_dataset('silhouette_coefficient', data=self.silhouette_coefficient if self.silhouette_coefficient is not None else np.nan)
+            f.attrs['epoch'] = epoch
+
+    def load_checkpoint(self, file_path: str) -> None:
+        """
+        Load the model state from a checkpoint file.
+
+        :param file_path: The path to the checkpoint file.
+        """
+        with h5py.File(file_path, 'r') as f:
+            self.x_size = f.attrs['x_size']
+            self.y_size = f.attrs['y_size']
+            self.input_dim = f.attrs['input_dim']
+            self.weights = f['weights'][:]
+            self._topology = f.attrs['topology']
+            self.topology = SOMTopology(self._topology)
+            self.neighborhood_function = create_neighborhood_function(f.attrs['neighborhood_function'])
+            self.neighborhood_width = f.attrs['neighborhood_width']
+            self.quantization_error = f['quantization_error'][()] if not np.isnan(f['quantization_error'][()]) else None
+            self.topological_error = f['topological_error'][()] if not np.isnan(f['topological_error'][()]) else None
+            self.silhouette_coefficient = f['silhouette_coefficient'][()] if not np.isnan(f['silhouette_coefficient'][()]) else None
+            #  loading the epochs here, but not using them specifically. Please use them as needed."
+            loaded_epoch = f.attrs['epoch'] 

@@ -15,7 +15,7 @@ To get started, follow these steps:
 1. Install the required dependencies:
 
 ~~~ bash
-pip install numpy scikit-learn matplotlib tqdm
+pip install numpy scikit-learn matplotlib tqdm h5py
 ~~~
 
 2. Clone this repository:
