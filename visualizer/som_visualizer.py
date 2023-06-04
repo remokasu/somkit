@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import math
+
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.collections import PatchCollection
+from matplotlib import cm, colors
+from matplotlib.collections import PatchCollection, RegularPolyCollection
 from matplotlib.font_manager import FontProperties
 from matplotlib.patches import Patch, RegularPolygon
 
@@ -30,31 +33,47 @@ class SOMVisualizer:
         self.point_size = 200  # size of ○ on hex.
 
     def add_some_coloured_hexagons(self, umatrix: np.ndarray, colormap: str, ax):
-        hex_radius = 0.5  # Adjust this value to control the gap between hexagons
-        # hex_radius = 2. / 3.
+        hex_height_coeff = np.sqrt(3)/2
+        hex_radius = 0.58  # Adjust this value to control the gap between hexagons
         linewidth = 0.1
         patches = []
         for y in range(umatrix.shape[0]):
             for x in range(umatrix.shape[1]):
                 hexagon = RegularPolygon(
-                    (x + 0.5 * (y % 2), y * 0.75),
+                    (x + 0.5 * (y % 2), y * hex_height_coeff),
                     numVertices=6,
                     radius=hex_radius,
                     orientation=np.radians(0),
                     # alpha=0.2,
                     edgecolor='k',
-                    # linewidth=linewidth
+                    linewidth=linewidth
                 )
                 patches.append(hexagon)
         pc = PatchCollection(patches, array=np.ravel(umatrix), cmap=colormap)
         ax.add_collection(pc)
         return ax
 
+        # w = 10
+        # n_centers = 0
+        # pc = RegularPolyCollection(
+        #     numsides=6,  # a hexagon
+        #     rotation=0,
+        #     sizes=(y * (1.3 * 2 * math.pi * w) ** 2 / x,),
+        #     # edgecolors=(0, 0, 0, 1),
+        #     array=np.ravel(umatrix),
+        #     cmap=colormap,
+        #     offsets=n_centers,
+        #     transOffset=ax.transData,
+        # )
+        # ax.add_collection(pc, autolim=True)
+        return ax
+
     def add_data_points(self):
+        hex_height_coeff = np.sqrt(3)/2
         for i, data_point in enumerate(self.data):
             winner_node = tuple(self.som.winner(data_point))
             x = winner_node[1] + 0.5 * (winner_node[0] % 2)
-            y = winner_node[0] * 0.75
+            y = winner_node[0] * hex_height_coeff
             if self.target is not None and self.target_names is not None:
                 color = plt.cm.tab10(float(self.target[i]) / len(self.target_names))
                 plt.scatter(x, y, color=color, s=self.point_size, marker='o', edgecolors='k')

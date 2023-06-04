@@ -22,8 +22,8 @@ final_radius = 3
 shuffle_each_epoch = True
 
 # Load dataset
-# input_data = load_iris()
-input_data = load_digits()
+input_data = load_iris()
+# input_data = load_digits()
 # input_data = load_breast_cancer()
 # input_data = load_wine()
 
