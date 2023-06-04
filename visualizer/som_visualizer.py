@@ -5,7 +5,7 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import cm, colors
-from matplotlib.collections import PatchCollection, RegularPolyCollection
+from matplotlib.collections import PatchCollection
 from matplotlib.font_manager import FontProperties
 from matplotlib.patches import Patch, RegularPolygon
 
@@ -51,21 +51,6 @@ class SOMVisualizer:
                 patches.append(hexagon)
         pc = PatchCollection(patches, array=np.ravel(umatrix), cmap=colormap)
         ax.add_collection(pc)
-        return ax
-
-        # w = 10
-        # n_centers = 0
-        # pc = RegularPolyCollection(
-        #     numsides=6,  # a hexagon
-        #     rotation=0,
-        #     sizes=(y * (1.3 * 2 * math.pi * w) ** 2 / x,),
-        #     # edgecolors=(0, 0, 0, 1),
-        #     array=np.ravel(umatrix),
-        #     cmap=colormap,
-        #     offsets=n_centers,
-        #     transOffset=ax.transData,
-        # )
-        # ax.add_collection(pc, autolim=True)
         return ax
 
     def add_data_points(self):
