@@ -4,7 +4,7 @@ import numpy as np
 
 from som import SOM
 from som_evaluator import SOMEvaluator
-from som_visualizer import SOMVisualizer
+from visualizer.som_visualizer import SOMVisualizer
 
 
 class TestSOMEvaluator(unittest.TestCase):

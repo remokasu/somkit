@@ -3,7 +3,7 @@ from sklearn.datasets import (load_breast_cancer, load_digits, load_iris,
 
 from som import SOM
 from som_evaluator import SOMEvaluator
-from som_visualizer import SOMVisualizer
+from visualizer.som_visualizer import SOMVisualizer
 
 # Set SOM parameters
 x_size = 10

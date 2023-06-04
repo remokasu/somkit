@@ -1,7 +1,7 @@
 from som import SOM
 from som_evaluator import SOMEvaluator
 from som_pak_data_loader import SOMPakDataLoader
-from som_visualizer import SOMVisualizer
+from visualizer.som_visualizer import SOMVisualizer
 
 # Set SOM parameters
 x_size = 10
