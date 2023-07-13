@@ -28,14 +28,9 @@ cd pysom
 
 3. Train and visualize a SOM with the sample datasets provided:
 
-- For the Iris dataset:
-~~~ bash
-python sample_iris.py
-~~~
-
 - For the animal dataset:
-
 ~~~ bash
+cd sample
 python sample_animal.py
 ~~~
 
@@ -43,7 +38,6 @@ python sample_animal.py
 
 - `animal.dat`: A sample dataset containing animal features in the SOM_PAK format.
 - `sample_animal.py`: A sample program that trains a SOM using the `animal.dat` dataset and visualizes the results.
-- `sample_iris.py`: A sample program that trains a SOM using the Iris dataset and visualizes the results.
 - `som.py`: The main SOM implementation.
 - `som_evaluator.py`: A module for evaluating the trained SOM using various metrics.git
 - `som_pak_data_loader.py`: A module for loading data from the SOM_PAK data format.
