@@ -1,8 +1,7 @@
 import optuna
 from sklearn.datasets import load_iris
 
-from som import SOM
-from som_evaluator import SOMEvaluator
+from pysom import SOM, SOMEvaluator, SOMPakDataLoader, SOMVisualizer
 
 
 def objective(trial):

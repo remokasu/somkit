@@ -1,17 +1,18 @@
-from som import SOM
-from som_evaluator import SOMEvaluator
-from som_pak_data_loader import SOMPakDataLoader
-from visualizer.som_visualizer import SOMVisualizer
+from sklearn.datasets import (load_breast_cancer, load_digits, load_iris,
+                              load_wine)
+
+from pysom import SOM, SOMEvaluator, SOMPakDataLoader, SOMVisualizer
+
 
 # Set SOM parameters
 x_size = 10
 y_size = 10
-batch_size = 32
-epochs = 1000
+batch_size = 1
+epochs = 100
 topology = 'hexagonal'
 # topology = 'rectangular'
-neighborhood_function = "bubble"
-# neighborhood_function = "gaussian"
+neighborhood_function = "gaussian"
+# neighborhood_function = "bubble"
 # neighborhood_function = "mexican_hat"
 # neighborhood_function = "cone"
 learning_rate = 0.01
@@ -19,16 +20,18 @@ initial_radius = 0.02
 final_radius = 3
 shuffle_each_epoch = True
 
-# Load the 'animal.dat' dataset using the SOMPakDataLoader
-loader = SOMPakDataLoader("animal.dat")
-animal_data = loader.load_data()
+# Load dataset
+input_data = load_iris()
+# input_data = load_digits()
+# input_data = load_breast_cancer()
+# input_data = load_wine()
 
 # Get the input dimension (number of features) of the dataset
-input_dim = animal_data.data.shape[1]
+input_dim = input_data.data.shape[1]
 
 # Create an instance of SOM with the specified parameters
 som = SOM(
-    data=animal_data,
+    data=input_data,
     x_size=x_size,
     y_size=y_size,
     input_dim=input_dim,
@@ -38,14 +41,21 @@ som = SOM(
     initial_radius=initial_radius,
     final_radius=final_radius,
     topology=topology,
+    neighborhood_function=neighborhood_function,
     shuffle_each_epoch=shuffle_each_epoch
 )
+
+som.shuffle_data()
 
 # Standardize the input data
 som.standardize_data()
 
+# Initialize the weights using random values
+som.initialize_weights_randomly()
+
+# or
 # Initialize the weights using PCA
-som.initialize_weights_with_pca()
+# som.initialize_weights_with_pca()
 
 # Train the SOM using the input data
 som.train()

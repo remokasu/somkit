@@ -3,7 +3,7 @@ from typing import Tuple
 import numpy as np
 from sklearn.metrics import silhouette_score
 
-from som import SOM
+from pysom.som import SOM
 
 
 class SOMEvaluator:

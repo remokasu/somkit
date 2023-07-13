@@ -1,0 +1,1 @@
+from pysom.topology.som_topology import SOMTopology

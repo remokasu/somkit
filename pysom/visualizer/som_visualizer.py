@@ -9,7 +9,7 @@ from matplotlib.collections import PatchCollection
 from matplotlib.font_manager import FontProperties
 from matplotlib.patches import Patch, RegularPolygon
 
-from som import SOM
+from pysom.som import SOM
 
 
 class SOMVisualizer:
