@@ -12,21 +12,16 @@ PySOM is a simple implementation of Self-Organizing Maps (SOMs) in Python. This 
 
 To get started, follow these steps:
 
-1. Install the required dependencies:
-
-~~~ bash
-pip install numpy scikit-learn matplotlib tqdm h5py
-~~~
-
-2. Clone this repository:
+1. Install
 
 ~~~ bash
 git clone https://github.com/remokasu/pysom.git
 cd pysom
+python -m setup.py install
 ~~~
 
 
-3. Train and visualize a SOM with the sample datasets provided:
+2. Train and visualize a SOM with the sample datasets provided:
 
 - For the animal dataset:
 ~~~ bash
