@@ -74,4 +74,4 @@ print("Topological Error: ", topological_error)
 som_visualizer = SOMVisualizer(som)
 
 # plot the U-Matrix with data points
-som_visualizer.plot_umatrix(show_data_points=True)
+som_visualizer.plot_umatrix(show_data_points=True, save_image=True)

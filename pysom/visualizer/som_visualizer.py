@@ -87,7 +87,13 @@ class SOMVisualizer:
             prop=self.font_prop
         )
 
-    def plot_umatrix(self, colormap: str = 'bone_r', show_data_points: bool = False, show_legend: bool = True):
+    def plot_umatrix(
+        self,
+        colormap: str = 'bone_r',
+        show_data_points: bool = False,
+        show_legend: bool = True,
+        save_image: bool = False
+    ):
         """
         Plot the U-Matrix of the trained SOM.
 
@@ -113,4 +119,6 @@ class SOMVisualizer:
         ax.set_aspect('equal')
         plt.xticks([])
         plt.yticks([])
+        if save_image:
+            plt.savefig("./umatrix.png", bbox_inches='tight', pad_inches=0.1)
         plt.show()
