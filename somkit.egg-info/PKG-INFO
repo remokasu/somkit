@@ -1,3 +1,15 @@
+Metadata-Version: 2.1
+Name: somkit
+Version: 0.0.1
+Summary: Self-Organizing Maps (SOMs) in Python.
+Home-page: https://github.com/remokasu/somkit
+Author: remokasu
+License: UNKNOWN
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+
 # somkit: A Python Implementation of Self-Organizing Maps (SOMs)
 
 ## Overview
@@ -34,3 +46,5 @@ python sample_animal.py
 cd sample
 python sample_iris.py
 ~~~
+
+
