@@ -8,4 +8,4 @@ fonts/
 checkpoints/
 build/
 dist/
-pysom.egg-info/
+somkit.egg-info/
