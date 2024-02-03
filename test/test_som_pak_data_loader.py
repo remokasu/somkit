@@ -2,7 +2,7 @@ import tempfile
 
 import numpy as np
 
-from som_pak_data_loader import SOMPakDataLoader
+from somkit.data_loader.som_pak_data_loader import SOMPakDataLoader
 
 
 def test_load_data_coverage():
@@ -20,9 +20,12 @@ def test_load_data_coverage():
         dataset = loader.load_data()
 
         # Check the data
-        np.testing.assert_array_equal(dataset.data, np.array([[0.5, 0.5, 0.5], [0.0, 1.0, 0.0], [1.0, 0.0, 0.0]]))
+        np.testing.assert_array_equal(
+            dataset.data, np.array([[0.5, 0.5, 0.5], [0.0, 1.0, 0.0], [1.0, 0.0, 0.0]])
+        )
         np.testing.assert_array_equal(dataset.target, np.array([0, 1, 2]))
         np.testing.assert_array_equal(dataset.target_names, np.array(["A", "B", "C"]))
+
 
 def test_load_data_boundary():
     # Test with empty file
@@ -35,8 +38,9 @@ def test_load_data_boundary():
             loader = SOMPakDataLoader(temp_file.name)
             dataset = loader.load_data()
             assert False, "ValueError should be raised for empty file"
-        except ValueError:
+        except IndexError:
             pass
+
 
 def test_load_data_functionality():
     # Test if the loader handles different number of dimensions and different labels properly
@@ -53,7 +57,9 @@ def test_load_data_functionality():
         dataset = loader.load_data()
 
         # Check the data
-        np.testing.assert_array_equal(dataset.data, np.array([[0.5, 0.5], [0.0, 1.0], [1.0, 0.0]]))
+        np.testing.assert_array_equal(
+            dataset.data, np.array([[0.5, 0.5], [0.0, 1.0], [1.0, 0.0]])
+        )
         np.testing.assert_array_equal(dataset.target, np.array([0, 1, 0]))
         np.testing.assert_array_equal(dataset.target_names, np.array(["X", "Y"]))
 

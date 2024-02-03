@@ -1,26 +1,29 @@
+from sklearn.datasets import load_digits
+
 import somkit
 
 # Set SOM parameters
-x_size = 10
-y_size = 10
+x_size = 50
+y_size = 50
 batch_size = 1
-n_epochs = 1000
+n_epochs = 100
 learning_rate = 0.01
 neighborhood_radius = 1.0
 shuffle_each_epoch = True
 
-# Load the 'animal.dat' dataset using the SOMPakDataLoader
-animal_data = somkit.load_som_pak_data("animal.dat")
+# Load dataset
+input_data = load_digits()
 
 # Create an instance of SOM with the specified parameters
 som = somkit.create_trainer(
-    data=animal_data,
+    data=input_data,
     size=(x_size, y_size),
     learning_rate=learning_rate,
     neighborhood_function=somkit.functions.gaussian,
     neighborhood_radius=neighborhood_radius,
-    checkpoint_interval=1,
 )
+
+som.shuffle_data()
 
 # Standardize the input data
 som.standardize_data()
@@ -31,9 +34,7 @@ som.initialize_weights_randomly()
 # som.initialize_weights_with_pca()
 
 # Train the SOM using the input data
-som.train(
-    n_epochs=n_epochs, batch_size=batch_size, shuffle_each_epoch=shuffle_each_epoch
-)
+som.train(n_epochs=n_epochs, batch_size=batch_size, shuffle_each_epoch=True)
 
 # Evaluate the trained SOM using various metrics
 evaluator = somkit.SOMEvaluator(som)
@@ -46,7 +47,7 @@ print("Silhouette Score: ", silhouette)
 print("Topological Error: ", topological_error)
 
 # Visualize the SOM using the U-Matrix plot
-visualizer = somkit.SOMVisualizer(som)
+som_visualizer = somkit.SOMVisualizer(som)
 
 # plot the U-Matrix with data points
-visualizer.plot_umatrix(show_data_points=True, file_name="umatrix_animal.png")
+som_visualizer.plot_umatrix(show_data_points=True, file_name="umatrix_digits.png")
