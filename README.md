@@ -25,12 +25,12 @@ python -m setup.py install
 
 - For the animal dataset:
 ~~~ bash
-cd sample
-python sample_animal.py
+cd example
+python animal.py
 ~~~
 
 - For the iris dataset:
 ~~~ bash
-cd sample
-python sample_iris.py
+cd example
+python iris.py
 ~~~
