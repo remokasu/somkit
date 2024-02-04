@@ -17,7 +17,7 @@ To get started, follow these steps:
 ~~~ bash
 git clone https://github.com/remokasu/somkit.git
 cd somkit
-python -m setup.py install
+python setup.py install
 ~~~
 
 
