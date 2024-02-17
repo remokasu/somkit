@@ -74,7 +74,7 @@ def update_weights(self, x, bmu_idx, epoch):
     for i, w in enumerate(self.weights):
         node_coords = self.get_node_coordinates(i)
         distance = self.distance_calculator(bmu_coords, node_coords)
-        neighborhood_val = self.neighborhood_function(distance, epoch)
+        neighborhood_val = self.n_func(distance, epoch)
         learning_rate = self.calculate_learning_rate(epoch)
         self.weights[i] += learning_rate * neighborhood_val * (x - w)
 ~~~ -->

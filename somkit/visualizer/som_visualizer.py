@@ -12,7 +12,12 @@ from somkit.trainer.som_trainer import SOMTrainer
 
 
 class SOMVisualizer:
-    def __init__(self, som: SOMTrainer, font_path: str | None = None):
+    def __init__(
+        self,
+        som: SOMTrainer,
+        font_path: str | None = None,
+        font_size: int | None = None,
+    ):
         self.som: SOMTrainer = som
         self.font_path: str | None = font_path
 
@@ -26,10 +31,12 @@ class SOMVisualizer:
             self.font_prop = (
                 FontProperties()
             )  # This will use the default font properties.
-        current_font_size = self.font_prop.get_size()
-        self.font_prop.set_size(current_font_size * 2)
 
-        self.fontsize = 11
+        if font_size is None:
+            self.font_size = self.font_prop.get_size()
+        else:
+            self.font_size = font_size
+        self.font_prop.set_size(self.font_size)
         self.point_size = 200  # size of ○ on hex.
 
     def add_some_coloured_hexagons(self, umatrix: np.ndarray, colormap: str, ax):
@@ -44,7 +51,6 @@ class SOMVisualizer:
                     numVertices=6,
                     radius=hex_radius,
                     orientation=np.radians(0),
-                    # alpha=0.2,
                     edgecolor="k",
                     linewidth=linewidth,
                 )
@@ -70,7 +76,7 @@ class SOMVisualizer:
                     textcoords="offset points",
                     xytext=(0, 10),
                     ha="center",
-                    fontsize=self.fontsize,
+                    fontproperties=self.font_prop,
                     color="black",
                     bbox=dict(
                         facecolor="white",

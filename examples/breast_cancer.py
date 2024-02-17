@@ -8,7 +8,7 @@ y_size = 20
 batch_size = 1
 n_epochs = 1000
 learning_rate = 0.01
-neighborhood_radius = 1.0
+n_radius = 1.0
 shuffle_each_epoch = True
 
 # Load dataset
@@ -21,8 +21,8 @@ som = somkit.create_trainer(
     data=input_data,
     size=(x_size, y_size),
     learning_rate=learning_rate,
-    neighborhood_function=somkit.functions.gaussian,
-    neighborhood_radius=neighborhood_radius,
+    n_func=somkit.functions.gaussian,
+    n_radius=n_radius,
 )
 
 som.shuffle_data()

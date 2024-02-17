@@ -22,7 +22,7 @@ class SOMEvaluator:
         bmus = np.array([self.weights[x, y, :] for x, y in bmus_idx])
         _data = self.data.astype(np.float64)  # Ensure data type consistency
         errors = np.linalg.norm(_data - bmus, axis=1)
-        wcss = np.sum(errors**2)
+        wcss = np.sum(errors ** 2)
         return wcss
 
     def calculate_silhouette_score(self) -> float:

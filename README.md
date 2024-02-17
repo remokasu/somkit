@@ -1,5 +1,7 @@
 # somkit: A Python Implementation of Self-Organizing Maps (SOMs)
 
+![](doc/fig_iris.png)
+
 ## Overview
 
 `somkit` is a simple implementation of Self-Organizing Maps (SOMs) in Python. This library provides an easy-to-use interface to train and visualize SOMs on various datasets. `somkit` can be used for clustering, data visualization, and dimensionality reduction tasks.
