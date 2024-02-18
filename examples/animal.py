@@ -6,8 +6,9 @@ y_size = 10
 batch_size = 1
 n_epochs = 100
 learning_rate = 0.01
-n_radius = 5.0
-shuffle_each_epoch = True
+initial_radius = 5.0
+shuffle_each_epoch = False
+dynamic_radius = False
 random_seed = 42
 
 # Load the 'animal.dat' dataset using the SOMPakDataLoader
@@ -19,7 +20,8 @@ som = somkit.create_trainer(
     size=(x_size, y_size),
     learning_rate=learning_rate,
     n_func=somkit.functions.gaussian,
-    n_radius=n_radius,
+    initial_radius=initial_radius,
+    dynamic_radius=dynamic_radius,
     random_seed=random_seed,
     checkpoint_interval=10,
 )
@@ -46,6 +48,7 @@ wcss = evaluator.calculate_wcss()
 silhouette = evaluator.calculate_silhouette_score()
 topological_error = evaluator.calculate_topological_error()
 
+print("radius: ", som.get_radius())
 print("WCSS: ", wcss)
 print("Silhouette Score: ", silhouette)
 print("Topological Error: ", topological_error)
@@ -57,21 +60,22 @@ visualizer = somkit.SOMVisualizer(som)
 visualizer.plot_umatrix(show_data_points=True, file_name="umatrix_animal.png")
 
 
-"""
 ############################################################################################################
 # Load the trained SOM model and train it further
 #===========================================================================================================
 
 n_epochs = 500
 learning_rate = 0.01
-n_radius = 1.0
+initial_radius = 1.0
+dynamic_radius = True
 
 # Load the trained SOM model
 loaded_som = somkit.load_trainer(
     "animal_som_model",
     learning_rate=learning_rate,
     n_func=somkit.functions.gaussian,
-    n_radius=n_radius
+    initial_radius=initial_radius,
+    dynamic_radius=dynamic_radius,
 )
 
 # Train the SOM using the input data
@@ -84,10 +88,13 @@ evaluator = somkit.SOMEvaluator(loaded_som)
 wcss = evaluator.calculate_wcss()
 silhouette = evaluator.calculate_silhouette_score()
 topological_error = evaluator.calculate_topological_error()
+print("radius: ", loaded_som.get_radius())
+print("WCSS: ", wcss)
+print("Silhouette Score: ", silhouette)
+print("Topological Error: ", topological_error)
 
 # Visualize the SOM using the U-Matrix plot
 visualizer = somkit.SOMVisualizer(loaded_som)
 
 # plot the U-Matrix with data points
 visualizer.plot_umatrix(show_data_points=True, file_name="umatrix_animal2.png")
-"""

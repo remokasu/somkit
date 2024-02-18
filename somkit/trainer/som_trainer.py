@@ -20,6 +20,7 @@ from somkit.topology import HexaglnalTopology, RectangularTopology
 
 
 __n_radius__ = 1.0
+__dynamic_radius__ = True
 __checkpoint_interval__ = 1
 
 
@@ -31,7 +32,8 @@ class SOMTrainer:
         input_dim: int,
         learning_rate: float,
         n_func: Callable = gaussian,
-        n_radius: float = __n_radius__,
+        initial_radius: float = __n_radius__,
+        dynamic_radius: bool = True,
         checkpoint_interval: int = __checkpoint_interval__,
         random_seed: int | None = None,
         rng: np.random.Generator | None = None,
@@ -63,11 +65,8 @@ class SOMTrainer:
         self.weights = None
         self.topology = HexaglnalTopology()
         self.n_func = n_func
-        self.n_radius = n_radius
-        # Initialize performance metrics
-        self.quantization_error = None
-        self.topological_error = None
-        self.silhouette_coefficient = None
+        self.n_radius = initial_radius
+        self.dynamic_radius = dynamic_radius
 
         self.checkpoint_interval = checkpoint_interval
         self.checkpoint_dir: str = "checkpoints"
@@ -152,20 +151,21 @@ class SOMTrainer:
         for epoch in tqdm(range(n_epochs)):
             if shuffle_each_epoch:
                 self.shuffle_data()
-            current_radius = self._decay_function(n_epochs, epoch)
+            if self.dynamic_radius:
+                self.update_radius(self._decay_function(n_epochs, epoch))
             batch_indices = np.arange(0, self.data.shape[0], batch_size)
             for batch_index in batch_indices:
                 batch = self.data[batch_index : batch_index + batch_size]
                 # bmu = [self._find_bmu(sample)[0] for sample in batch]
                 bmu_indices = [self._find_bmu(sample)[1] for sample in batch]
-                self._update_weights_batch(batch, bmu_indices, current_radius)
+                self._update_weights_batch(batch, bmu_indices, self.get_radius())
 
             # Save checkpoint at specified intervals
             if epoch % self.checkpoint_interval == 0:
                 checkpoint_path = self._get_checkpoint_file_path(epoch)
                 self._save_checkpoint(checkpoint_path)
 
-        self._compute_performance_metrics(self.data)
+        # self._compute_performance_metrics(self.data)
 
     def _find_bmu(self, sample: np.ndarray) -> Tuple[np.ndarray, Tuple[int, int]]:
         """
@@ -212,7 +212,7 @@ class SOMTrainer:
 
         for sample, bmu_idx in zip(batch, bmu_indices):
             distance = np.linalg.norm(grid - np.array(bmu_idx), axis=1)
-            influence = self.n_func(current_radius, distance, self.n_radius)
+            influence = self.n_func(current_radius, distance, self.get_radius())
 
             mask = distance <= current_radius
             influence = influence[mask].reshape(-1, 1)
@@ -237,29 +237,7 @@ class SOMTrainer:
         """
         return np.exp(-epoch / n_epochs) * max(self.x_size, self.y_size) / 2.0
 
-    # ====================
-    # evaluation
-    # ====================
-
-    def _compute_performance_metrics(self, data: ndarray) -> None:
-        """
-        Compute performance metrics (quantization error, topological error, and silhouette coefficient) for the SOM.
-
-        :param data: A 2D numpy array containing the input data.
-        """
-        bmus_idx = self._get_bmus(data)
-        self.quantization_error = self._compute_quantization_error(data, bmus_idx)
-        self.topological_error = self._compute_topological_error(bmus_idx)
-
-        cluster_labels = [y * self.x_size + x for x, y in bmus_idx]
-
-        n_labels = len(set(cluster_labels))
-        if 1 < n_labels < len(data):
-            self.silhouette_coefficient = silhouette_score(data, cluster_labels)
-        else:
-            self.silhouette_coefficient = None
-
-    def _get_bmus(self, data: ndarray) -> List[Tuple[int, int]]:
+    def get_bmus(self, data: ndarray) -> List[Tuple[int, int]]:
         """
         Get the Best Matching Units (BMUs) for each input sample in the given data.
 
@@ -273,32 +251,6 @@ class SOMTrainer:
             (self.x_size, self.y_size),
         )
         return list(zip(bmu_indices[0], bmu_indices[1]))
-
-    def _compute_topological_error(self, bmus_idx: List[Tuple[int, int]]) -> float:
-        """
-        Compute the topological error for the SOM based on the given BMUs.
-
-        :param bmus_idx: A list of BMU indices in the SOM grid.
-        :return: The topological error for the SOM.
-        """
-        bmus_idx_array = np.array(bmus_idx)
-        distances = np.linalg.norm(bmus_idx_array[:-1] - bmus_idx_array[1:], axis=1)
-        errors = np.sum(distances > 1)
-        return errors / len(bmus_idx)
-
-    def _compute_quantization_error(
-        self, data: ndarray, bmus_idx: List[Tuple[int, int]]
-    ) -> float:
-        """
-        Compute the quantization error for the SOM based on the given data and BMUs.
-
-        :param data: A 2D numpy array containing the input data.
-        :param bmus_idx: A list of BMU indices in the SOM grid.
-        :return: The quantization error for the SOM.
-        """
-        bmus = np.array([self.weights[x, y, :] for x, y in bmus_idx])
-        errors = np.linalg.norm(data - bmus, axis=1)
-        return np.mean(errors)
 
     def winner(self, data_points: Union[np.ndarray, np.ndarray]) -> np.ndarray:
         """
@@ -331,54 +283,6 @@ class SOMTrainer:
             return winner_coordinates
 
     # ====================
-    # visualization
-    # ====================
-
-    def distance_map(self) -> np.ndarray:
-        """
-        Calculate the distance map of the SOM.
-
-        :return: A 2D numpy array containing the distance map of the SOM.
-        """
-        size_x, size_y = self.weights.shape[0], self.weights.shape[1]
-        um = np.zeros((size_x, size_y, 8))
-
-        # Left neighbor
-        um[1:, :, 0] = np.linalg.norm(
-            self.weights[1:, :] - self.weights[:-1, :], axis=2
-        )
-        # Right neighbor
-        um[:-1, :, 1] = np.linalg.norm(
-            self.weights[:-1, :] - self.weights[1:, :], axis=2
-        )
-        # Top neighbor
-        um[:, 1:, 2] = np.linalg.norm(
-            self.weights[:, 1:] - self.weights[:, :-1], axis=2
-        )
-        # Bottom neighbor
-        um[:, :-1, 3] = np.linalg.norm(
-            self.weights[:, :-1] - self.weights[:, 1:], axis=2
-        )
-        # Top-left neighbor
-        um[1:, 1:, 4] = np.linalg.norm(
-            self.weights[1:, 1:] - self.weights[:-1, :-1], axis=2
-        )
-        # Bottom-right neighbor
-        um[:-1, :-1, 5] = np.linalg.norm(
-            self.weights[:-1, :-1] - self.weights[1:, 1:], axis=2
-        )
-        # Top-right neighbor
-        um[:-1, 1:, 6] = np.linalg.norm(
-            self.weights[:-1, 1:] - self.weights[1:, :-1], axis=2
-        )
-        # Bottom-left neighbor
-        um[1:, :-1, 7] = np.linalg.norm(
-            self.weights[1:, :-1] - self.weights[:-1, 1:], axis=2
-        )
-
-        return um.mean(axis=2)
-
-    # ====================
     # save
     # ====================
 
@@ -401,9 +305,10 @@ class SOMTrainer:
 
         target_names = np.array([])
         if len(self.target_names) > 0:
-            target_names = np.array(
-                [name.encode("utf-8") for name in self.target_names]
-            )
+            if isinstance(self.target_names[0], str):
+                target_names = np.array(
+                    [name.encode("utf-8") for name in self.target_names]
+                )
 
         with h5py.File(file_path, "w") as f:
             f.attrs["x_size"] = self.x_size
@@ -415,24 +320,6 @@ class SOMTrainer:
             f.create_dataset("target", data=self.target)
             f.create_dataset("target_names", data=target_names)
             f.create_dataset("weights", data=self.weights)
-            f.create_dataset(
-                "quantization_error",
-                data=self.quantization_error
-                if self.quantization_error is not None
-                else np.nan,
-            )
-            f.create_dataset(
-                "topological_error",
-                data=self.topological_error
-                if self.topological_error is not None
-                else np.nan,
-            )
-            f.create_dataset(
-                "silhouette_coefficient",
-                data=self.silhouette_coefficient
-                if self.silhouette_coefficient is not None
-                else np.nan,
-            )
             grp = f.create_group("random_state")
             grp["0"] = random_state[0]
             grp["1"] = f.create_dataset("stete", data=random_state[1])
@@ -493,17 +380,11 @@ class SOMTrainer:
         """
         self.n_func = n_func
 
-    def set_radius(self, n_radius: float) -> None:
-        """
-        Set the radius of the neighborhood function for the SOM.
-
-        :param n_radius: The radius of the neighborhood function.
-        """
-        self.n_radius = n_radius
-
-    def set_neighbor_func(self, func, radius: float = __n_radius__):
-        self.n_func = func
+    def update_radius(self, radius: float):
         self.n_radius = radius
+
+    def get_radius(self):
+        return self.n_radius
 
 
 def create_trainer(
@@ -511,7 +392,8 @@ def create_trainer(
     size: Tuple[int, int],
     learning_rate: float,
     n_func: Callable = gaussian,
-    n_radius: float = __n_radius__,
+    initial_radius: float = __n_radius__,
+    dynamic_radius: bool = __dynamic_radius__,
     checkpoint_interval: int = __checkpoint_interval__,
     random_seed: int | None = None,
 ):
@@ -530,7 +412,8 @@ def create_trainer(
         input_dim,
         learning_rate,
         n_func=n_func,
-        n_radius=n_radius,
+        initial_radius=initial_radius,
+        dynamic_radius=dynamic_radius,
         checkpoint_interval=checkpoint_interval,
         random_seed=random_seed,
     )
@@ -540,7 +423,8 @@ def load_trainer(
     checkpoint_file_path: str,
     learning_rate: float,
     n_func: Callable,
-    n_radius: float | None = None,
+    initial_radius: float | None = None,
+    dynamic_radius: bool = __dynamic_radius__,
 ) -> SOMTrainer:
     with h5py.File(checkpoint_file_path, "r") as f:
         _x_size = f.attrs["x_size"]
@@ -566,8 +450,8 @@ def load_trainer(
     rng = np.random.RandomState()
     rng.set_state(_state)
 
-    if n_radius is None:
-        n_radius = _n_radius
+    if initial_radius is None:
+        initial_radius = _n_radius
 
     som = SOMTrainer(
         data=_data,
@@ -575,7 +459,8 @@ def load_trainer(
         input_dim=_input_dim,
         learning_rate=_learning_rate,
         n_func=n_func,
-        n_radius=n_radius,
+        initial_radius=initial_radius,
+        dynamic_radius=dynamic_radius,
         rng=rng,
     )
     som.weights = _weights

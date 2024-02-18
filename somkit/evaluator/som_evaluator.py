@@ -18,7 +18,7 @@ class SOMEvaluator:
 
         :return: The WCSS for the SOM.
         """
-        bmus_idx = self.som._get_bmus(self.data)
+        bmus_idx = self.som.get_bmus(self.data)
         bmus = np.array([self.weights[x, y, :] for x, y in bmus_idx])
         _data = self.data.astype(np.float64)  # Ensure data type consistency
         errors = np.linalg.norm(_data - bmus, axis=1)
@@ -87,6 +87,27 @@ class SOMEvaluator:
         topological_error = num_incorrect_topology / num_data_points
 
         return topological_error
+
+    def calculate_quantization_error(self) -> float:
+        """
+        Calculate the quantization error for the SOM.
+
+        The quantization error measures the average distance between each data point and its corresponding
+        winning node (i.e., the node with the smallest distance to the data point).
+
+        Returns:
+            quantization_error (float): The calculated quantization error for the SOM.
+        """
+        # Calculate the BMUs for each data point
+        bmus = self.som.get_bmus(self.data)
+
+        # Calculate the Euclidean distance between each data point and its corresponding BMU
+        distances = np.linalg.norm(self.data - self.weights[bmus], axis=1)
+
+        # Calculate the average distance
+        quantization_error = np.mean(distances)
+
+        return quantization_error
 
     def get_neighbors(self, node: Tuple[int, int], radius: int = 1) -> np.ndarray:
         x, y = np.meshgrid(

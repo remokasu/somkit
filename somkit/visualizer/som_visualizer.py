@@ -11,6 +11,35 @@ from matplotlib.patches import Patch, RegularPolygon
 from somkit.trainer.som_trainer import SOMTrainer
 
 
+def distance_map(weights: np.ndarray) -> np.ndarray:
+    """
+    Calculate the distance map of the SOM.
+
+    :return: A 2D numpy array containing the distance map of the SOM.
+    """
+    size_x, size_y = weights.shape[0], weights.shape[1]
+    um = np.zeros((size_x, size_y, 8))
+
+    # Left neighbor
+    um[1:, :, 0] = np.linalg.norm(weights[1:, :] - weights[:-1, :], axis=2)
+    # Right neighbor
+    um[:-1, :, 1] = np.linalg.norm(weights[:-1, :] - weights[1:, :], axis=2)
+    # Top neighbor
+    um[:, 1:, 2] = np.linalg.norm(weights[:, 1:] - weights[:, :-1], axis=2)
+    # Bottom neighbor
+    um[:, :-1, 3] = np.linalg.norm(weights[:, :-1] - weights[:, 1:], axis=2)
+    # Top-left neighbor
+    um[1:, 1:, 4] = np.linalg.norm(weights[1:, 1:] - weights[:-1, :-1], axis=2)
+    # Bottom-right neighbor
+    um[:-1, :-1, 5] = np.linalg.norm(weights[:-1, :-1] - weights[1:, 1:], axis=2)
+    # Top-right neighbor
+    um[:-1, 1:, 6] = np.linalg.norm(weights[:-1, 1:] - weights[1:, :-1], axis=2)
+    # Bottom-left neighbor
+    um[1:, :-1, 7] = np.linalg.norm(weights[1:, :-1] - weights[:-1, 1:], axis=2)
+
+    return um.mean(axis=2)
+
+
 class SOMVisualizer:
     def __init__(
         self,
@@ -121,7 +150,8 @@ class SOMVisualizer:
         :param show_legend: A boolean indicating whether to show the legend for the data points.
         """
 
-        umatrix: np.ndarray = self.som.distance_map().T
+        # umatrix: np.ndarray = self.som.distance_map().T
+        umatrix: np.ndarray = distance_map(self.som.get_weights()).T
         width_padding = 10 if show_legend else 0  # Add extra space for the legend
         fig, ax = plt.subplots(
             figsize=(

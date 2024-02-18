@@ -8,8 +8,10 @@ y_size = 10
 batch_size = 1
 n_epochs = 100
 learning_rate = 0.01
-n_radius = 1.0
+initial_radius = 1.0
+dynamic_radius = True
 shuffle_each_epoch = True
+random_seed = 42
 
 # Load dataset
 input_data = load_wine()
@@ -21,7 +23,10 @@ som = somkit.create_trainer(
     size=(x_size, y_size),
     learning_rate=learning_rate,
     n_func=somkit.functions.gaussian,
-    n_radius=n_radius,
+    initial_radius=initial_radius,
+    dynamic_radius=dynamic_radius,
+    random_seed=random_seed,
+    checkpoint_interval=10,
 )
 
 som.shuffle_data()

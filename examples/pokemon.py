@@ -11,16 +11,15 @@ y_size = 100
 batch_size = 32
 shuffle_each_epoch = True
 random_seed = 123
+dynamic_radius = True
 
 lean1_n_epochs = 100000
-# lean1_n_epochs = 100
 lean1_learning_rate = 0.1
-lean1_n_radius = 100
+lean1_initial_radius = 100
 
 lean2_n_epochs = 100000
-# lean2_n_epochs = 100
 lean2_learning_rate = 0.02
-lean2_n_radius = 30
+lean2_initial_radius = 30
 
 
 # Load the 'animal.dat' dataset using the SOMPakDataLoader
@@ -32,7 +31,8 @@ som = somkit.create_trainer(
     size=(x_size, y_size),
     learning_rate=lean1_learning_rate,
     n_func=somkit.functions.gaussian,
-    n_radius=lean1_n_radius,
+    initial_radius=lean1_initial_radius,
+    dynamic_radius=dynamic_radius,
     random_seed=random_seed,
     checkpoint_interval=100,
 )
@@ -89,7 +89,7 @@ loaded_som = somkit.load_trainer(
     "pokemon_som_model",
     learning_rate=lean2_learning_rate,
     n_func=somkit.functions.gaussian,
-    n_radius=lean2_n_radius
+    initial_radius=lean2_initial_radius
 )
 
 # Train the SOM using the input data

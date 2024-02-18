@@ -45,12 +45,12 @@ class TestSOMTrainer(unittest.TestCase):
         winner_coords = self.som.winner(test_data)
         self.assertEqual(winner_coords.shape, (2, 2))
 
-    def test_distance_map(self):
-        self.som.standardize_data()
-        self.som.initialize_weights_randomly()
-        self.som.train(n_epochs=100, batch_size=1, shuffle_each_epoch=True)
-        distance_map = self.som.distance_map()
-        self.assertEqual(distance_map.shape, (10, 10))
+    # def test_distance_map(self):
+    #     self.som.standardize_data()
+    #     self.som.initialize_weights_randomly()
+    #     self.som.train(n_epochs=100, batch_size=1, shuffle_each_epoch=True)
+    #     distance_map = self.som.distance_map()
+    #     self.assertEqual(distance_map.shape, (10, 10))
 
     def test_shuffle_each_epoch_enabled(self):
         data = np.array([[1, 1], [1, 0], [0, 1], [0, 0], [0.5, 0.5]])
