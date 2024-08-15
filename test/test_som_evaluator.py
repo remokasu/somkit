@@ -4,7 +4,6 @@ import numpy as np
 
 from somkit import create_trainer
 from somkit.evaluator import SOMEvaluator
-from somkit.visualizer import SOMVisualizer
 
 
 class TestSOMEvaluator(unittest.TestCase):

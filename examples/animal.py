@@ -57,12 +57,14 @@ print("Topological Error: ", topological_error)
 visualizer = somkit.SOMVisualizer(som)
 
 # plot the U-Matrix with data points
-visualizer.plot_umatrix(show_data_points=True, file_name="umatrix_animal.png")
+visualizer.plot_umatrix(
+    show_data_points=True, file_name="umatrix_animal.png", show=False
+)
 
 
 ############################################################################################################
 # Load the trained SOM model and train it further
-#===========================================================================================================
+# ===========================================================================================================
 
 n_epochs = 500
 learning_rate = 0.01

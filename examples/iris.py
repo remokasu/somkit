@@ -60,4 +60,6 @@ print("Topological Error: ", topological_error)
 som_visualizer = somkit.SOMVisualizer(som)
 
 # plot the U-Matrix with data points
-som_visualizer.plot_umatrix(show_data_points=True, show_legend=False, file_name="umatrix_iris.png")
+som_visualizer.plot_umatrix(
+    show_data_points=True, show_legend=False, file_name="umatrix_iris.png"
+)

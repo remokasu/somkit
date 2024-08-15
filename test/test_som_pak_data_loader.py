@@ -36,7 +36,7 @@ def test_load_data_boundary():
 
         try:
             loader = SOMPakDataLoader(temp_file.name)
-            dataset = loader.load_data()
+            loader.load_data()
             assert False, "ValueError should be raised for empty file"
         except IndexError:
             pass

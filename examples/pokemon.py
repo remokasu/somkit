@@ -49,7 +49,7 @@ som.initialize_weights_randomly()
 som.train(
     n_epochs=lean1_n_epochs,
     batch_size=batch_size,
-    shuffle_each_epoch=shuffle_each_epoch
+    shuffle_each_epoch=shuffle_each_epoch,
 )
 
 # Save the trained SOM model
@@ -67,36 +67,35 @@ print("Topological Error: ", topological_error)
 
 # Visualize the SOM using the U-Matrix plot
 visualizer = somkit.SOMVisualizer(
-    som,
-    font_path="./font/NotoSansJP-VariableFont_wght.ttf"
+    som, font_path="./font/NotoSansJP-VariableFont_wght.ttf"
 )
 
 # plot the U-Matrix with data points
 visualizer.plot_umatrix(
     show_data_points=True,
     show_legend=False,
-    file_name="umatrix_pokemon.png"
+    file_name="umatrix_pokemon.png",
+    show=False,
 )
-
 
 
 ############################################################################################################
 # Load the trained SOM model and train it further
-#===========================================================================================================
+# ===========================================================================================================
 
 # Load the trained SOM model
 loaded_som = somkit.load_trainer(
     "pokemon_som_model",
     learning_rate=lean2_learning_rate,
     n_func=somkit.functions.gaussian,
-    initial_radius=lean2_initial_radius
+    initial_radius=lean2_initial_radius,
 )
 
 # Train the SOM using the input data
 loaded_som.train(
     n_epochs=lean2_n_epochs,
     batch_size=batch_size,
-    shuffle_each_epoch=shuffle_each_epoch
+    shuffle_each_epoch=shuffle_each_epoch,
 )
 
 # Evaluate the loaded SOM using various metrics
@@ -111,8 +110,7 @@ print("Topological Error: ", topological_error)
 
 # Visualize the SOM using the U-Matrix plot
 visualizer = somkit.SOMVisualizer(
-    loaded_som,
-    font_path="./font/NotoSansJP-VariableFont_wght.ttf"
+    loaded_som, font_path="./font/NotoSansJP-VariableFont_wght.ttf"
 )
 
 # plot the U-Matrix with data points

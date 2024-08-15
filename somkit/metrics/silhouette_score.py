@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import numpy as np
 from sklearn import metrics
 
 silhouette_score = metrics.silhouette_score

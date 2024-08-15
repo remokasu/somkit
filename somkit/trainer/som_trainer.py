@@ -7,16 +7,12 @@ import h5py
 import numpy as np
 from numpy import ndarray
 from tqdm import tqdm
-import copy
-import types
-
 
 from somkit.data_loader import Bunch, DatasetWrapper
 from somkit.decomposition import PCA
 from somkit.functions import gaussian
-from somkit.metrics import silhouette_score
 from somkit.preprocessing import fit_transform
-from somkit.topology import HexaglnalTopology, RectangularTopology
+from somkit.topology import HexaglnalTopology
 
 
 __n_radius__ = 1.0

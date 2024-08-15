@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import math
-
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.collections import PatchCollection
@@ -141,6 +139,7 @@ class SOMVisualizer:
         show_data_points: bool = False,
         show_legend: bool = True,
         file_name: str | None = None,
+        show: bool = True,
     ):
         """
         Plot the U-Matrix of the trained SOM.
@@ -178,4 +177,5 @@ class SOMVisualizer:
         plt.yticks([])
         if file_name is not None:
             plt.savefig(file_name, bbox_inches="tight", pad_inches=0.1)
-        plt.show()
+        if show:
+            plt.show()
