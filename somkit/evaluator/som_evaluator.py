@@ -35,19 +35,16 @@ class SOMEvaluator:
         Returns:
             silhouette_score (float): The calculated silhouette score for the SOM.
         """
-        # Create an array to store the labels assigned to each data point by the SOM
-        labels: np.ndarray = np.zeros(len(self.data))
+        # Get BMUs for all data points at once (more efficient than looping)
+        bmus_idx = self.som.get_bmus(self.data)
 
-        # Assign a label to each data point based on the index of its winning node
-        for i, data_point in enumerate(self.data):
-            # Find the winning node for the current data point
-            winner_node: Tuple[int, int] = self.som.winner(data_point)
-
-            # Convert the winner_node's index to a single integer label and assign it to the data point
-            labels[i] = np.ravel_multi_index(winner_node, self.weights.shape[:2])
+        # Convert BMU indices to single integer labels
+        labels = np.array([
+            np.ravel_multi_index(bmu, self.weights.shape[:2])
+            for bmu in bmus_idx
+        ])
 
         # Calculate and return the silhouette score using the data points and their assigned labels
-        # return silhouette_score(self.data, labels)
         try:
             return silhouette_score(self.data, labels)
         except ValueError as e:
@@ -61,26 +58,35 @@ class SOMEvaluator:
             return -1.0
 
     def calculate_topological_error(self) -> float:
+        """
+        Calculate the topological error for the SOM.
+
+        Topological error is the proportion of all data points for which the first and
+        second BMUs are not adjacent in the grid. This measures how well the SOM preserves
+        the topology of the input space.
+
+        :return: The topological error (0 = perfect topology preservation, 1 = worst).
+        """
         num_incorrect_topology = 0
         num_data_points = len(self.data)
 
         for data_point in self.data:
-            # Find the winner node and its neighbors
-            winner_node = self.som.winner(data_point)
-            neighbors = self.get_neighbors(winner_node)
+            # Calculate distances to all nodes
+            distances = np.linalg.norm(self.weights - data_point, axis=2).flatten()
 
-            # Calculate distances between the data_point and the winner node & its neighbors
-            winner_distance = np.linalg.norm(data_point - self.weights[winner_node])
-            neighbor_distances = [
-                np.linalg.norm(data_point - self.weights[neighbor])
-                for neighbor in neighbors
-            ]
+            # Find indices of two closest nodes (BMU and second BMU)
+            sorted_indices = np.argsort(distances)
+            bmu1_flat = sorted_indices[0]
+            bmu2_flat = sorted_indices[1]
 
-            # Check if the winner_distance is not the smallest distance
-            if any(
-                winner_distance >= neighbor_distance
-                for neighbor_distance in neighbor_distances
-            ):
+            # Convert flat indices to 2D coordinates
+            bmu1 = np.unravel_index(bmu1_flat, (self.weights.shape[0], self.weights.shape[1]))
+            bmu2 = np.unravel_index(bmu2_flat, (self.weights.shape[0], self.weights.shape[1]))
+
+            # Check if BMU and second BMU are adjacent (Manhattan distance <= 1)
+            manhattan_distance = abs(bmu1[0] - bmu2[0]) + abs(bmu1[1] - bmu2[1])
+
+            if manhattan_distance > 1:
                 num_incorrect_topology += 1
 
         # Calculate the topological error

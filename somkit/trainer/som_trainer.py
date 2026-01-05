@@ -12,7 +12,7 @@ from somkit.data_loader import Bunch, DatasetWrapper
 from somkit.decomposition import PCA
 from somkit.functions import gaussian
 from somkit.preprocessing import fit_transform
-from somkit.topology import HexaglnalTopology
+from somkit.topology import HexagonalTopology
 
 
 __n_radius__ = 1.0
@@ -64,7 +64,7 @@ class SOMTrainer:
         self.initial_learning_rate = learning_rate
         self.learning_rate = learning_rate
         self.weights = None
-        self.topology = HexaglnalTopology()
+        self.topology = HexagonalTopology()
         self.n_func = n_func
         self.initial_radius = initial_radius
         self.n_radius = initial_radius
@@ -185,20 +185,13 @@ class SOMTrainer:
         :return bmu: The weights of the BMU.
         :return bmu_idx: The indices of the BMU in the SOM grid.
         """
-        x_indices, y_indices = np.meshgrid(
-            np.arange(self.x_size), np.arange(self.y_size), indexing="ij"
-        )
-        sample_x, sample_y = np.unravel_index(
-            np.argmin(np.linalg.norm(self.weights - sample, axis=2)),
-            (self.x_size, self.y_size),
-        )
-        euclidean_distances = self.topology.topology_function(
-            x_indices, y_indices, sample_x, sample_y
-        )
-        bmu_idx = np.unravel_index(
-            np.argmin(euclidean_distances), (self.x_size, self.y_size)
-        )
+        # Calculate Euclidean distances between sample and all weight vectors
+        distances = np.linalg.norm(self.weights - sample, axis=2)
+
+        # Find the node with minimum distance (BMU)
+        bmu_idx = np.unravel_index(np.argmin(distances), (self.x_size, self.y_size))
         bmu = self.weights[bmu_idx]
+
         return bmu, bmu_idx
 
     def _update_weights_batch(

@@ -23,7 +23,7 @@ class Topology(ABC):
         raise NotImplementedError
 
 
-class HexaglnalTopology(Topology):
+class HexagonalTopology(Topology):
     def topology_function(
         self, x1: np.ndarray, y1: np.ndarray, x2: int, y2: int
     ) -> np.ndarray:

@@ -42,7 +42,7 @@ class TestSOMEvaluator(unittest.TestCase):
 
     def test_calculate_topological_error(self):
         expected_error = (
-            0.6  # Manually calculated topological error for the fixed dataset
+            0.0  # Updated: All data points have adjacent BMU and second BMU
         )
         actual_error = self.evaluator.calculate_topological_error()
         self.assertAlmostEqual(expected_error, actual_error, places=6)

@@ -92,7 +92,12 @@ class SOMVisualizer:
             winner_node = tuple(self.som.winner(data_point))
             x = winner_node[1] + 0.5 * (winner_node[0] % 2)
             y = winner_node[0] * hex_height_coeff
-            if self.target is not None and self.target_names is not None:
+            if (
+                self.target is not None
+                and self.target_names is not None
+                and len(self.target_names) > 0
+                and self.target[i] < len(self.target_names)
+            ):
                 color = plt.cm.tab10(float(self.target[i]) / len(self.target_names))
                 plt.scatter(
                     x, y, color=color, s=self.point_size, marker="o", edgecolors="k"
@@ -118,6 +123,8 @@ class SOMVisualizer:
                 )
 
     def add_legend(self):
+        if self.target_names is None or len(self.target_names) == 0:
+            return
         legend_elements = [
             Patch(
                 facecolor=plt.cm.tab10(float(i) / len(self.target_names)),
@@ -154,8 +161,8 @@ class SOMVisualizer:
         width_padding = 10 if show_legend else 0  # Add extra space for the legend
         fig, ax = plt.subplots(
             figsize=(
-                self.som.weights.shape[0] + width_padding,
-                self.som.weights.shape[1],
+                self.som.weights.shape[1] + width_padding,
+                self.som.weights.shape[0],
             )
         )
 
@@ -175,6 +182,252 @@ class SOMVisualizer:
         ax.set_aspect("equal")
         plt.xticks([])
         plt.yticks([])
+        if file_name is not None:
+            plt.savefig(file_name, bbox_inches="tight", pad_inches=0.1)
+        if show:
+            plt.show()
+
+    def plot_component_planes(
+        self,
+        colormap: str = "viridis",
+        file_name: str | None = None,
+        show: bool = True,
+    ):
+        """
+        Plot component planes showing the distribution of each input feature across the SOM.
+
+        :param colormap: A string representing the colormap to be used for the visualization.
+        :param file_name: Optional filename to save the plot.
+        :param show: Whether to display the plot.
+        """
+        weights = self.som.get_weights()
+        n_features = weights.shape[2]
+
+        # Calculate grid size for subplots
+        n_cols = min(4, n_features)
+        n_rows = (n_features + n_cols - 1) // n_cols
+
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_cols * 4, n_rows * 4))
+        if n_features == 1:
+            axes = np.array([axes])
+        axes = axes.flatten()
+
+        hex_height_coeff = np.sqrt(3) / 2
+        hex_radius = 0.58
+        linewidth = 0.1
+
+        for feature_idx in range(n_features):
+            ax = axes[feature_idx]
+            feature_map = weights[:, :, feature_idx].T
+
+            patches = []
+            for y in range(feature_map.shape[0]):
+                for x in range(feature_map.shape[1]):
+                    hexagon = RegularPolygon(
+                        (x + 0.5 * (y % 2), y * hex_height_coeff),
+                        numVertices=6,
+                        radius=hex_radius,
+                        orientation=np.radians(0),
+                        edgecolor="k",
+                        linewidth=linewidth,
+                    )
+                    patches.append(hexagon)
+
+            pc = PatchCollection(patches, array=np.ravel(feature_map), cmap=colormap)
+            ax.add_collection(pc)
+
+            xlim_padding = 1
+            ylim_padding = 1
+            ax.set_xlim(
+                -xlim_padding,
+                feature_map.shape[1] + 0.5 * (feature_map.shape[0] % 2) + xlim_padding,
+            )
+            ax.set_ylim(-ylim_padding, feature_map.shape[0] * 0.75 + ylim_padding)
+            ax.set_aspect("equal")
+            ax.set_title(f"Feature {feature_idx + 1}", fontproperties=self.font_prop)
+            ax.set_xticks([])
+            ax.set_yticks([])
+            plt.colorbar(pc, ax=ax)
+
+        # Hide unused subplots
+        for idx in range(n_features, len(axes)):
+            axes[idx].axis("off")
+
+        plt.tight_layout()
+        if file_name is not None:
+            plt.savefig(file_name, bbox_inches="tight", pad_inches=0.1)
+        if show:
+            plt.show()
+
+    def plot_hit_map(
+        self,
+        colormap: str = "YlOrRd",
+        file_name: str | None = None,
+        show: bool = True,
+    ):
+        """
+        Plot a hit map showing the number of data points mapped to each node.
+
+        :param colormap: A string representing the colormap to be used for the visualization.
+        :param file_name: Optional filename to save the plot.
+        :param show: Whether to display the plot.
+        """
+        weights = self.som.get_weights()
+        hit_map = np.zeros((weights.shape[0], weights.shape[1]))
+
+        # Count hits for each node
+        for data_point in self.data:
+            winner_node = tuple(self.som.winner(data_point))
+            hit_map[winner_node] += 1
+
+        hit_map = hit_map.T
+
+        fig, ax = plt.subplots(figsize=(self.som.weights.shape[1], self.som.weights.shape[0]))
+
+        hex_height_coeff = np.sqrt(3) / 2
+        hex_radius = 0.58
+        linewidth = 0.1
+        patches = []
+
+        for y in range(hit_map.shape[0]):
+            for x in range(hit_map.shape[1]):
+                hexagon = RegularPolygon(
+                    (x + 0.5 * (y % 2), y * hex_height_coeff),
+                    numVertices=6,
+                    radius=hex_radius,
+                    orientation=np.radians(0),
+                    edgecolor="k",
+                    linewidth=linewidth,
+                )
+                patches.append(hexagon)
+
+        pc = PatchCollection(patches, array=np.ravel(hit_map), cmap=colormap)
+        ax.add_collection(pc)
+
+        xlim_padding = 1
+        ylim_padding = 1
+        ax.set_xlim(
+            -xlim_padding,
+            hit_map.shape[1] + 0.5 * (hit_map.shape[0] % 2) + xlim_padding,
+        )
+        ax.set_ylim(-ylim_padding, hit_map.shape[0] * 0.75 + ylim_padding)
+        ax.set_aspect("equal")
+        ax.set_title("Hit Map", fontproperties=self.font_prop, fontsize=self.font_size + 4)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        plt.colorbar(pc, ax=ax, label="Number of hits")
+
+        if file_name is not None:
+            plt.savefig(file_name, bbox_inches="tight", pad_inches=0.1)
+        if show:
+            plt.show()
+
+    def plot_class_distribution(
+        self,
+        file_name: str | None = None,
+        show: bool = True,
+    ):
+        """
+        Plot class distribution map showing the distribution of classes at each node with pie charts.
+
+        :param file_name: Optional filename to save the plot.
+        :param show: Whether to display the plot.
+        """
+        if self.target is None or self.target_names is None or len(self.target_names) == 0:
+            print("Warning: No target data available for class distribution map.")
+            return
+
+        weights = self.som.get_weights()
+        # Store class counts for each node
+        class_distribution = {}
+
+        # Count class occurrences for each node
+        for i, data_point in enumerate(self.data):
+            winner_node = tuple(self.som.winner(data_point))
+            if winner_node not in class_distribution:
+                class_distribution[winner_node] = {}
+            class_idx = self.target[i]
+            if class_idx < len(self.target_names):
+                class_name = self.target_names[class_idx]
+                class_distribution[winner_node][class_name] = (
+                    class_distribution[winner_node].get(class_name, 0) + 1
+                )
+
+        fig, ax = plt.subplots(
+            figsize=(self.som.weights.shape[1] + 2, self.som.weights.shape[0])
+        )
+
+        hex_height_coeff = np.sqrt(3) / 2
+        hex_radius = 0.58
+        linewidth = 0.5
+
+        # Draw hexagons
+        for y in range(weights.shape[0]):
+            for x in range(weights.shape[1]):
+                hexagon = RegularPolygon(
+                    (x + 0.5 * (y % 2), y * hex_height_coeff),
+                    numVertices=6,
+                    radius=hex_radius,
+                    orientation=np.radians(0),
+                    edgecolor="gray",
+                    facecolor="white",
+                    linewidth=linewidth,
+                )
+                ax.add_patch(hexagon)
+
+                # Add pie chart if node has data
+                node = (y, x)
+                if node in class_distribution:
+                    classes = list(class_distribution[node].keys())
+                    counts = list(class_distribution[node].values())
+                    colors = [
+                        plt.cm.tab10(float(self.target_names.index(c)) / len(self.target_names))
+                        for c in classes
+                    ]
+
+                    # Draw mini pie chart
+                    pie_x = x + 0.5 * (y % 2)
+                    pie_y = y * hex_height_coeff
+                    pie_radius = 0.4
+
+                    ax.pie(
+                        counts,
+                        colors=colors,
+                        center=(pie_x, pie_y),
+                        radius=pie_radius,
+                        wedgeprops=dict(linewidth=0.5, edgecolor="white"),
+                    )
+
+        xlim_padding = 1
+        ylim_padding = 1
+        ax.set_xlim(
+            -xlim_padding,
+            weights.shape[1] + 0.5 * (weights.shape[0] % 2) + xlim_padding,
+        )
+        ax.set_ylim(-ylim_padding, weights.shape[0] * 0.75 + ylim_padding)
+        ax.set_aspect("equal")
+        ax.set_title(
+            "Class Distribution Map", fontproperties=self.font_prop, fontsize=self.font_size + 4
+        )
+        ax.set_xticks([])
+        ax.set_yticks([])
+
+        # Add legend
+        legend_elements = [
+            Patch(
+                facecolor=plt.cm.tab10(float(i) / len(self.target_names)),
+                edgecolor="k",
+                label=self.target_names[i],
+            )
+            for i in range(len(self.target_names))
+        ]
+        ax.legend(
+            handles=legend_elements,
+            loc="upper left",
+            bbox_to_anchor=(1.05, 1),
+            prop=self.font_prop,
+        )
+
         if file_name is not None:
             plt.savefig(file_name, bbox_inches="tight", pad_inches=0.1)
         if show:

@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "somkit"
+version = "0.0.1"
+description = "Self-Organizing Maps (SOMs) in Python."
+readme = "README.md"
+requires-python = ">=3.9"
+license = {file = "LICENSE"}
+authors = [
+    {name = "remokasu"}
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "numpy>=1.20.0",
+    "scikit-learn>=1.0.0",
+    "matplotlib>=3.3.0",
+    "tqdm>=4.60.0",
+    "h5py>=3.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/remokasu/somkit"
+Repository = "https://github.com/remokasu/somkit"
+Issues = "https://github.com/remokasu/somkit/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["somkit*"]
+exclude = ["tests*", "examples*", "build*"]

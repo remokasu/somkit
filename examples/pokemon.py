@@ -11,6 +11,7 @@ y_size = 100
 batch_size = 32
 shuffle_each_epoch = True
 random_seed = 123
+tau = None  # Time constant for decay (None = defaults to n_epochs)
 dynamic_radius = True
 
 lean1_n_epochs = 100000
@@ -89,6 +90,7 @@ loaded_som = somkit.load_trainer(
     learning_rate=lean2_learning_rate,
     n_func=somkit.functions.gaussian,
     initial_radius=lean2_initial_radius,
+    tau=tau,
 )
 
 # Train the SOM using the input data

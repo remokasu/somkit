@@ -1,6 +1,6 @@
-from somkit.topology.som_topology import HexaglnalTopology, RectangularTopology
+from somkit.topology.som_topology import HexagonalTopology, RectangularTopology
 
 __all__ = [
-    "HexaglnalTopology",
+    "HexagonalTopology",
     "RectangularTopology",
 ]

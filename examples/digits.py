@@ -8,10 +8,11 @@ y_size = 50
 batch_size = 1
 n_epochs = 100
 learning_rate = 0.01
-initial_radius = 1.0
+initial_radius = 25.0
 shuffle_each_epoch = True
 dynamic_radius = False
 random_seed = 42
+tau = None  # Time constant for decay (None = defaults to n_epochs)
 
 # Load dataset
 input_data = load_digits()
@@ -26,6 +27,7 @@ som = somkit.create_trainer(
     dynamic_radius=dynamic_radius,
     random_seed=random_seed,
     checkpoint_interval=10,
+    tau=tau,
 )
 
 som.shuffle_data()

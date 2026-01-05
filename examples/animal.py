@@ -4,11 +4,11 @@ import somkit
 x_size = 10
 y_size = 10
 batch_size = 1
-n_epochs = 100
+n_epochs = 500
 learning_rate = 0.01
 initial_radius = 5.0
 shuffle_each_epoch = False
-dynamic_radius = False
+dynamic_radius = True
 random_seed = 42
 
 # Load the 'animal.dat' dataset using the SOMPakDataLoader
@@ -53,50 +53,17 @@ print("WCSS: ", wcss)
 print("Silhouette Score: ", silhouette)
 print("Topological Error: ", topological_error)
 
-# Visualize the SOM using the U-Matrix plot
+# Visualize the SOM using various visualization methods
 visualizer = somkit.SOMVisualizer(som)
 
-# plot the U-Matrix with data points
-visualizer.plot_umatrix(
-    show_data_points=True, file_name="umatrix_animal.png", show=False
-)
+# Plot the U-Matrix with data points
+visualizer.plot_umatrix(show_data_points=True, file_name="umatrix_animal.png", show=False)
 
+# Plot Component Planes showing distribution of each feature
+visualizer.plot_component_planes(file_name="component_planes_animal.png", show=False)
 
-############################################################################################################
-# Load the trained SOM model and train it further
-# ===========================================================================================================
+# Plot Hit Map showing data density distribution
+visualizer.plot_hit_map(file_name="hit_map_animal.png", show=False)
 
-n_epochs = 500
-learning_rate = 0.01
-initial_radius = 1.0
-dynamic_radius = True
-
-# Load the trained SOM model
-loaded_som = somkit.load_trainer(
-    "animal_som_model",
-    learning_rate=learning_rate,
-    n_func=somkit.functions.gaussian,
-    initial_radius=initial_radius,
-    dynamic_radius=dynamic_radius,
-)
-
-# Train the SOM using the input data
-loaded_som.train(
-    n_epochs=n_epochs, batch_size=batch_size, shuffle_each_epoch=shuffle_each_epoch
-)
-
-# Evaluate the loaded SOM using various metrics
-evaluator = somkit.SOMEvaluator(loaded_som)
-wcss = evaluator.calculate_wcss()
-silhouette = evaluator.calculate_silhouette_score()
-topological_error = evaluator.calculate_topological_error()
-print("radius: ", loaded_som.get_radius())
-print("WCSS: ", wcss)
-print("Silhouette Score: ", silhouette)
-print("Topological Error: ", topological_error)
-
-# Visualize the SOM using the U-Matrix plot
-visualizer = somkit.SOMVisualizer(loaded_som)
-
-# plot the U-Matrix with data points
-visualizer.plot_umatrix(show_data_points=True, file_name="umatrix_animal2.png")
+# Plot Class Distribution Map showing class boundaries
+visualizer.plot_class_distribution(file_name="class_distribution_animal.png", show=False)
