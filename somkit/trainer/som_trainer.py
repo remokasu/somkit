@@ -33,6 +33,7 @@ class SOMTrainer:
         checkpoint_interval: int = __checkpoint_interval__,
         random_seed: int | None = None,
         rng: np.random.Generator | None = None,
+        tau: float | None = None,
     ) -> None:
         """
         Initialize the Self-Organizing Map (SOM) with the given parameters.
@@ -42,9 +43,12 @@ class SOMTrainer:
         :param epochs: The number of epochs for training.
         :param learning_rate: The initial learning rate for weight updates.
         :param n_func: The neighborhood function to use for updating weights.
-        :param n_radius: The initial radius of the neighborhood function.
+        :param initial_radius: The initial radius of the neighborhood function.
+        :param dynamic_radius: Whether to use dynamic radius decay during training.
         :param checkpoint_interval: The interval at which to save checkpoints during training.
         :param random_seed: The random seed to use for reproducible results.
+        :param rng: The random number generator to use.
+        :param tau: Time constant for exponential decay. If None, defaults to n_epochs.
         """
         self._org_data = data
         self.data = (
@@ -57,12 +61,15 @@ class SOMTrainer:
         self.x_size = size[0]
         self.y_size = size[1]
         self.input_dim = input_dim
+        self.initial_learning_rate = learning_rate
         self.learning_rate = learning_rate
         self.weights = None
         self.topology = HexaglnalTopology()
         self.n_func = n_func
+        self.initial_radius = initial_radius
         self.n_radius = initial_radius
         self.dynamic_radius = dynamic_radius
+        self.tau = tau
 
         self.checkpoint_interval = checkpoint_interval
         self.checkpoint_dir: str = "checkpoints"
@@ -144,11 +151,18 @@ class SOMTrainer:
         if self.weights is None:
             self.initialize_weights_randomly()
 
+        # Set tau to n_epochs if not specified
+        tau = self.tau if self.tau is not None else n_epochs
+
         for epoch in tqdm(range(n_epochs)):
             if shuffle_each_epoch:
                 self.shuffle_data()
+
+            # Update learning rate and radius using exponential decay
+            self.learning_rate = self._calculate_learning_rate(epoch, tau)
             if self.dynamic_radius:
-                self.update_radius(self._decay_function(n_epochs, epoch))
+                self.n_radius = self._calculate_radius(epoch, tau)
+
             batch_indices = np.arange(0, self.data.shape[0], batch_size)
             for batch_index in batch_indices:
                 batch = self.data[batch_index : batch_index + batch_size]
@@ -196,6 +210,8 @@ class SOMTrainer:
         """
         Update the weights of the SOM using the given batch of input samples.
 
+        Weight update formula: w_i(t+1) = w_i(t) + η(t) · h_ij(t) · (x - w_i(t))
+
         :param batch: A batch of input samples.
         :param bmu_indices: The BMU indices in the SOM grid for each input sample.
         :param current_radius: The current radius of the neighborhood function.
@@ -218,14 +234,39 @@ class SOMTrainer:
             affected_weights = self.weights[
                 affected_nodes[:, 0], affected_nodes[:, 1], :
             ]
-            new_weights = affected_weights + (
-                self.learning_rate / len(batch)
-            ) * influence * (sample - affected_weights)
+            # Use the current learning rate (already decayed) without dividing by batch size
+            # Formula: w_i(t+1) = w_i(t) + η(t) · h_ij(t) · (x - w_i(t))
+            new_weights = affected_weights + self.learning_rate * influence * (sample - affected_weights)
             self.weights[affected_nodes[:, 0], affected_nodes[:, 1], :] = new_weights
+
+    def _calculate_learning_rate(self, t: int, tau: float) -> float:
+        """
+        Calculate the learning rate at time t using exponential decay.
+
+        η(t) = η_0 · exp(-t / τ)
+
+        :param t: Current iteration/epoch.
+        :param tau: Time constant for decay.
+        :return: The learning rate at time t.
+        """
+        return self.initial_learning_rate * np.exp(-t / tau)
+
+    def _calculate_radius(self, t: int, tau: float) -> float:
+        """
+        Calculate the neighborhood radius at time t using exponential decay.
+
+        σ(t) = σ_0 · exp(-t / τ)
+
+        :param t: Current iteration/epoch.
+        :param tau: Time constant for decay.
+        :return: The neighborhood radius at time t.
+        """
+        return self.initial_radius * np.exp(-t / tau)
 
     def _decay_function(self, n_epochs: int, epoch: int) -> float:
         """
         Calculate the decay function value for the given epoch.
+        (Deprecated: Use _calculate_radius instead)
 
         :param n_epochs: The total number of epochs for training.
         :param epoch: The current epoch of training.
@@ -392,6 +433,7 @@ def create_trainer(
     dynamic_radius: bool = __dynamic_radius__,
     checkpoint_interval: int = __checkpoint_interval__,
     random_seed: int | None = None,
+    tau: float | None = None,
 ):
     if isinstance(data, np.ndarray):
         input_dim = data.shape[1]
@@ -412,6 +454,7 @@ def create_trainer(
         dynamic_radius=dynamic_radius,
         checkpoint_interval=checkpoint_interval,
         random_seed=random_seed,
+        tau=tau,
     )
 
 
@@ -421,6 +464,7 @@ def load_trainer(
     n_func: Callable,
     initial_radius: float | None = None,
     dynamic_radius: bool = __dynamic_radius__,
+    tau: float | None = None,
 ) -> SOMTrainer:
     with h5py.File(checkpoint_file_path, "r") as f:
         _x_size = f.attrs["x_size"]
@@ -458,6 +502,7 @@ def load_trainer(
         initial_radius=initial_radius,
         dynamic_radius=dynamic_radius,
         rng=rng,
+        tau=tau,
     )
     som.weights = _weights
     som.target = _target
