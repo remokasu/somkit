@@ -12,7 +12,7 @@
 
 ## Features
 
-- **Hexagonal topology** for Self-Organizing Maps
+- **Multiple topology support**: Hexagonal and Rectangular topologies for Self-Organizing Maps
 - **Dynamic learning rate and radius decay** following SOM algorithm standards
 - **Multiple visualization methods**:
   - U-Matrix (distance map)
@@ -49,6 +49,7 @@ som = somkit.create_trainer(
     n_func=somkit.functions.gaussian,
     initial_radius=5.0,
     dynamic_radius=True,
+    topology="hexagonal",  # or "rectangular"
     random_seed=42
 )
 
@@ -86,6 +87,25 @@ python animal.py
 ```bash
 cd examples
 python iris.py
+```
+
+## Topology Support
+
+somkit supports both **hexagonal** and **rectangular** topologies:
+
+- **Hexagonal topology** (default): Uses hexagonal grid structure with cube coordinate distance calculation. Provides more uniform neighbor distances and is commonly used in traditional SOM implementations.
+
+- **Rectangular topology**: Uses standard rectangular grid with Euclidean distance. Simpler to visualize and compatible with grid-based data structures.
+
+The topology affects both the **learning process** (distance calculation in neighborhood function) and **visualization** (grid layout and patch shapes).
+
+```python
+# Create SOM with rectangular topology
+som = somkit.create_trainer(
+    data=data,
+    size=(10, 10),
+    topology="rectangular"
+)
 ```
 
 ## Visualization Methods

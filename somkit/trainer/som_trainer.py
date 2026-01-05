@@ -34,6 +34,7 @@ class SOMTrainer:
         random_seed: int | None = None,
         rng: np.random.Generator | None = None,
         tau: float | None = None,
+        topology: str = "hexagonal",
     ) -> None:
         """
         Initialize the Self-Organizing Map (SOM) with the given parameters.
@@ -49,6 +50,7 @@ class SOMTrainer:
         :param random_seed: The random seed to use for reproducible results.
         :param rng: The random number generator to use.
         :param tau: Time constant for exponential decay. If None, defaults to n_epochs.
+        :param topology: The topology to use ('hexagonal' or 'rectangular').
         """
         self._org_data = data
         self.data = (
@@ -64,7 +66,12 @@ class SOMTrainer:
         self.initial_learning_rate = learning_rate
         self.learning_rate = learning_rate
         self.weights = None
-        self.topology = HexagonalTopology()
+        # Set topology based on parameter
+        if topology == "rectangular":
+            from somkit.topology import RectangularTopology
+            self.topology = RectangularTopology()
+        else:
+            self.topology = HexagonalTopology()
         self.n_func = n_func
         self.initial_radius = initial_radius
         self.n_radius = initial_radius
@@ -216,7 +223,10 @@ class SOMTrainer:
         grid = np.concatenate((x, y), axis=1)
 
         for sample, bmu_idx in zip(batch, bmu_indices):
-            distance = np.linalg.norm(grid - np.array(bmu_idx), axis=1)
+            # Use topology-specific distance function
+            distance = self.topology.topology_function(
+                grid[:, 0], grid[:, 1], bmu_idx[0], bmu_idx[1]
+            )
             influence = self.n_func(current_radius, distance, self.get_radius())
 
             mask = distance <= current_radius
@@ -427,6 +437,7 @@ def create_trainer(
     checkpoint_interval: int = __checkpoint_interval__,
     random_seed: int | None = None,
     tau: float | None = None,
+    topology: str = "hexagonal",
 ):
     if isinstance(data, np.ndarray):
         input_dim = data.shape[1]
@@ -448,6 +459,7 @@ def create_trainer(
         checkpoint_interval=checkpoint_interval,
         random_seed=random_seed,
         tau=tau,
+        topology=topology,
     )
 
 

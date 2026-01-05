@@ -67,31 +67,29 @@ class SOMVisualizer:
         self.point_size = 200  # size of ○ on hex.
 
     def add_some_coloured_hexagons(self, umatrix: np.ndarray, colormap: str, ax):
-        hex_height_coeff = np.sqrt(3) / 2
-        hex_radius = 0.58  # Adjust this value to control the gap between hexagons
+        """Add colored patches (hexagons or rectangles based on topology) to the axis."""
         linewidth = 0.1
         patches = []
+        topology = self.som.topology
+
         for y in range(umatrix.shape[0]):
             for x in range(umatrix.shape[1]):
-                hexagon = RegularPolygon(
-                    (x + 0.5 * (y % 2), y * hex_height_coeff),
-                    numVertices=6,
-                    radius=hex_radius,
-                    orientation=np.radians(0),
+                vis_x, vis_y = topology.get_visualization_coords(x, y)
+                patch = topology.create_patch(
+                    vis_x, vis_y,
                     edgecolor="k",
                     linewidth=linewidth,
                 )
-                patches.append(hexagon)
+                patches.append(patch)
         pc = PatchCollection(patches, array=np.ravel(umatrix), cmap=colormap)
         ax.add_collection(pc)
         return ax
 
     def add_data_points(self):
-        hex_height_coeff = np.sqrt(3) / 2
+        topology = self.som.topology
         for i, data_point in enumerate(self.data):
             winner_node = tuple(self.som.winner(data_point))
-            x = winner_node[1] + 0.5 * (winner_node[0] % 2)
-            y = winner_node[0] * hex_height_coeff
+            x, y = topology.get_visualization_coords(winner_node[1], winner_node[0])
             if (
                 self.target is not None
                 and self.target_names is not None
@@ -174,11 +172,11 @@ class SOMVisualizer:
 
         xlim_padding = 1
         ylim_padding = 1
-        ax.set_xlim(
-            -xlim_padding,
-            umatrix.shape[1] + 0.5 * (umatrix.shape[0] % 2) + xlim_padding,
+        map_width, map_height = self.som.topology.get_map_dimensions(
+            umatrix.shape[1], umatrix.shape[0]
         )
-        ax.set_ylim(-ylim_padding, umatrix.shape[0] * 0.75 + ylim_padding)
+        ax.set_xlim(-xlim_padding, map_width + xlim_padding)
+        ax.set_ylim(-ylim_padding, map_height + ylim_padding)
         ax.set_aspect("equal")
         plt.xticks([])
         plt.yticks([])
@@ -212,8 +210,7 @@ class SOMVisualizer:
             axes = np.array([axes])
         axes = axes.flatten()
 
-        hex_height_coeff = np.sqrt(3) / 2
-        hex_radius = 0.58
+        topology = self.som.topology
         linewidth = 0.1
 
         for feature_idx in range(n_features):
@@ -223,26 +220,24 @@ class SOMVisualizer:
             patches = []
             for y in range(feature_map.shape[0]):
                 for x in range(feature_map.shape[1]):
-                    hexagon = RegularPolygon(
-                        (x + 0.5 * (y % 2), y * hex_height_coeff),
-                        numVertices=6,
-                        radius=hex_radius,
-                        orientation=np.radians(0),
+                    vis_x, vis_y = topology.get_visualization_coords(x, y)
+                    patch = topology.create_patch(
+                        vis_x, vis_y,
                         edgecolor="k",
                         linewidth=linewidth,
                     )
-                    patches.append(hexagon)
+                    patches.append(patch)
 
             pc = PatchCollection(patches, array=np.ravel(feature_map), cmap=colormap)
             ax.add_collection(pc)
 
             xlim_padding = 1
             ylim_padding = 1
-            ax.set_xlim(
-                -xlim_padding,
-                feature_map.shape[1] + 0.5 * (feature_map.shape[0] % 2) + xlim_padding,
+            map_width, map_height = topology.get_map_dimensions(
+                feature_map.shape[1], feature_map.shape[0]
             )
-            ax.set_ylim(-ylim_padding, feature_map.shape[0] * 0.75 + ylim_padding)
+            ax.set_xlim(-xlim_padding, map_width + xlim_padding)
+            ax.set_ylim(-ylim_padding, map_height + ylim_padding)
             ax.set_aspect("equal")
             ax.set_title(f"Feature {feature_idx + 1}", fontproperties=self.font_prop)
             ax.set_xticks([])
@@ -284,33 +279,30 @@ class SOMVisualizer:
 
         fig, ax = plt.subplots(figsize=(self.som.weights.shape[1], self.som.weights.shape[0]))
 
-        hex_height_coeff = np.sqrt(3) / 2
-        hex_radius = 0.58
+        topology = self.som.topology
         linewidth = 0.1
         patches = []
 
         for y in range(hit_map.shape[0]):
             for x in range(hit_map.shape[1]):
-                hexagon = RegularPolygon(
-                    (x + 0.5 * (y % 2), y * hex_height_coeff),
-                    numVertices=6,
-                    radius=hex_radius,
-                    orientation=np.radians(0),
+                vis_x, vis_y = topology.get_visualization_coords(x, y)
+                patch = topology.create_patch(
+                    vis_x, vis_y,
                     edgecolor="k",
                     linewidth=linewidth,
                 )
-                patches.append(hexagon)
+                patches.append(patch)
 
         pc = PatchCollection(patches, array=np.ravel(hit_map), cmap=colormap)
         ax.add_collection(pc)
 
         xlim_padding = 1
         ylim_padding = 1
-        ax.set_xlim(
-            -xlim_padding,
-            hit_map.shape[1] + 0.5 * (hit_map.shape[0] % 2) + xlim_padding,
+        map_width, map_height = topology.get_map_dimensions(
+            hit_map.shape[1], hit_map.shape[0]
         )
-        ax.set_ylim(-ylim_padding, hit_map.shape[0] * 0.75 + ylim_padding)
+        ax.set_xlim(-xlim_padding, map_width + xlim_padding)
+        ax.set_ylim(-ylim_padding, map_height + ylim_padding)
         ax.set_aspect("equal")
         ax.set_title("Hit Map", fontproperties=self.font_prop, fontsize=self.font_size + 4)
         ax.set_xticks([])
@@ -357,54 +349,50 @@ class SOMVisualizer:
             figsize=(self.som.weights.shape[1] + 2, self.som.weights.shape[0])
         )
 
-        hex_height_coeff = np.sqrt(3) / 2
-        hex_radius = 0.58
+        topology = self.som.topology
         linewidth = 0.5
 
-        # Draw hexagons
+        # Draw patches (hexagons or rectangles)
         for y in range(weights.shape[0]):
             for x in range(weights.shape[1]):
-                hexagon = RegularPolygon(
-                    (x + 0.5 * (y % 2), y * hex_height_coeff),
-                    numVertices=6,
-                    radius=hex_radius,
-                    orientation=np.radians(0),
+                vis_x, vis_y = topology.get_visualization_coords(x, y)
+                patch = topology.create_patch(
+                    vis_x, vis_y,
                     edgecolor="gray",
                     facecolor="white",
                     linewidth=linewidth,
                 )
-                ax.add_patch(hexagon)
+                ax.add_patch(patch)
 
                 # Add pie chart if node has data
                 node = (y, x)
                 if node in class_distribution:
                     classes = list(class_distribution[node].keys())
                     counts = list(class_distribution[node].values())
+                    # Convert target_names to list if it's a numpy array
+                    target_names_list = list(self.target_names) if isinstance(self.target_names, np.ndarray) else self.target_names
                     colors = [
-                        plt.cm.tab10(float(self.target_names.index(c)) / len(self.target_names))
+                        plt.cm.tab10(float(target_names_list.index(c)) / len(self.target_names))
                         for c in classes
                     ]
 
-                    # Draw mini pie chart
-                    pie_x = x + 0.5 * (y % 2)
-                    pie_y = y * hex_height_coeff
+                    # Draw mini pie chart at the visualization coordinates
                     pie_radius = 0.4
-
                     ax.pie(
                         counts,
                         colors=colors,
-                        center=(pie_x, pie_y),
+                        center=(vis_x, vis_y),
                         radius=pie_radius,
                         wedgeprops=dict(linewidth=0.5, edgecolor="white"),
                     )
 
         xlim_padding = 1
         ylim_padding = 1
-        ax.set_xlim(
-            -xlim_padding,
-            weights.shape[1] + 0.5 * (weights.shape[0] % 2) + xlim_padding,
+        map_width, map_height = topology.get_map_dimensions(
+            weights.shape[1], weights.shape[0]
         )
-        ax.set_ylim(-ylim_padding, weights.shape[0] * 0.75 + ylim_padding)
+        ax.set_xlim(-xlim_padding, map_width + xlim_padding)
+        ax.set_ylim(-ylim_padding, map_height + ylim_padding)
         ax.set_aspect("equal")
         ax.set_title(
             "Class Distribution Map", fontproperties=self.font_prop, fontsize=self.font_size + 4
