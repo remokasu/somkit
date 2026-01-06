@@ -22,27 +22,36 @@ som = somkit.create_trainer(
     data=input_data,
     size=(x_size, y_size),
     learning_rate=learning_rate,
-    n_func=somkit.functions.gaussian,
+    n_func=somkit.functions.gaussian,  # or somkit.functions.bubble, somkit.functions.mexican_hat
     initial_radius=initial_radius,
     dynamic_radius=dynamic_radius,
     random_seed=random_seed,
     checkpoint_interval=10,
     tau=tau,
+    topology="hexagonal",  # or "rectangular"
 )
 
-# Shuffle the input data
+# Shuffle the input data (optional)
 som.shuffle_data()
 
-# Standardize the input data
+# Normalize the input data
 som.standardize_data()
+# or, use other normalization methods
+# som.normalize_data(method='standard')  # Z-score normalization (mean=0, std=1)
+# som.normalize_data(method='minmax')    # Min-Max normalization [0, 1]
+# som.normalize_data(method='variance')  # Variance normalization (std=1, preserve mean)
 
 # Initialize the weights using random values
 som.initialize_weights_randomly()
 # or, initialize the weights using PCA
 # som.initialize_weights_with_pca()
+# or, initialize the weights using linear mapping (recommended)
+# som.initialize_weights_linearly()
 
-# Train the SOM using the input data
-som.train(n_epochs=n_epochs, batch_size=batch_size, shuffle_each_epoch=True)
+# Train the SOM using sequential learning
+som.train(n_epochs=n_epochs, batch_size=batch_size, shuffle_each_epoch=shuffle_each_epoch)
+# or, train using batch learning
+# som.train_batch(n_epochs=n_epochs)
 
 # Save the trained SOM model
 som.save_model("iris_som_model")
@@ -58,10 +67,55 @@ print("WCSS: ", wcss)
 print("Silhouette Score: ", silhouette)
 print("Topological Error: ", topological_error)
 
-# Visualize the SOM using the U-Matrix plot
+# Visualize the SOM using various visualization methods
 som_visualizer = somkit.SOMVisualizer(som)
 
-# plot the U-Matrix with data points
+# Plot the U-Matrix with data points
 som_visualizer.plot_umatrix(
-    show_data_points=True, show_legend=False, file_name="umatrix_iris.png"
+    show_data_points=True,
+    show_legend=False,
+    title=None,  # Optional title for the plot (default: None, no title)
+    file_name="umatrix_iris.png",
+    show=False,
+)
+
+# Plot Component Planes showing distribution of each feature
+som_visualizer.plot_component_planes(
+    title=None,  # Optional title for the plot (default: None, no title)
+    file_name="component_planes_iris.png",
+    show=False,
+)
+
+# Plot Hit Map showing data density distribution
+som_visualizer.plot_hit_map(
+    title=None,  # Optional title for the plot (default: None, no title)
+    file_name="hit_map_iris.png",
+    show=False,
+)
+
+# Plot Class Distribution Map showing class boundaries
+som_visualizer.plot_class_distribution(
+    title=None,  # Optional title for the plot (default: None, no title)
+    file_name="class_distribution_iris.png",
+    show=False,
+)
+
+# Plot Sammon's Mapping Projection
+som_visualizer.plot_sammon_projection(
+    show_nodes=True,
+    show_data_points=True,
+    show_connections=True,
+    show_legend=True,
+    show_labels=False,
+    node_size=200,
+    data_point_size=100,
+    connection_style="spring",  # or "line"
+    colormap="viridis",
+    max_iter=500,
+    learning_rate=0.2,
+    random_state=random_seed,
+    title=None,  # Optional title for the plot (default: None, no title)
+    # title="Sammon's Mapping of Iris Dataset",  # Example with custom title
+    file_name="sammon_projection_iris.png",
+    show=False,
 )

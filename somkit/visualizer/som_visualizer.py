@@ -6,6 +6,7 @@ from matplotlib.collections import PatchCollection
 from matplotlib.font_manager import FontProperties
 from matplotlib.patches import Patch, RegularPolygon
 
+from somkit.projection import sammon_mapping
 from somkit.trainer.som_trainer import SOMTrainer
 
 
@@ -143,6 +144,7 @@ class SOMVisualizer:
         colormap: str = "bone_r",
         show_data_points: bool = False,
         show_legend: bool = True,
+        title: str | None = None,
         file_name: str | None = None,
         show: bool = True,
     ):
@@ -152,6 +154,9 @@ class SOMVisualizer:
         :param colormap: A string representing the colormap to be used for the U-Matrix visualization.
         :param show_data_points: A boolean indicating whether to show the data points on the U-Matrix.
         :param show_legend: A boolean indicating whether to show the legend for the data points.
+        :param title: Optional title for the plot. If None, no title is displayed.
+        :param file_name: Optional filename to save the plot.
+        :param show: Whether to display the plot.
         """
 
         # umatrix: np.ndarray = self.som.distance_map().T
@@ -178,6 +183,11 @@ class SOMVisualizer:
         ax.set_xlim(-xlim_padding, map_width + xlim_padding)
         ax.set_ylim(-ylim_padding, map_height + ylim_padding)
         ax.set_aspect("equal")
+
+        # Set title only if provided
+        if title is not None:
+            ax.set_title(title, fontproperties=self.font_prop, fontsize=self.font_size + 4)
+
         plt.xticks([])
         plt.yticks([])
         if file_name is not None:
@@ -188,6 +198,7 @@ class SOMVisualizer:
     def plot_component_planes(
         self,
         colormap: str = "viridis",
+        title: str | None = None,
         file_name: str | None = None,
         show: bool = True,
     ):
@@ -195,6 +206,7 @@ class SOMVisualizer:
         Plot component planes showing the distribution of each input feature across the SOM.
 
         :param colormap: A string representing the colormap to be used for the visualization.
+        :param title: Optional title for the plot. If None, no title is displayed.
         :param file_name: Optional filename to save the plot.
         :param show: Whether to display the plot.
         """
@@ -248,6 +260,10 @@ class SOMVisualizer:
         for idx in range(n_features, len(axes)):
             axes[idx].axis("off")
 
+        # Set title only if provided
+        if title is not None:
+            fig.suptitle(title, fontproperties=self.font_prop, fontsize=self.font_size + 6)
+
         plt.tight_layout()
         if file_name is not None:
             plt.savefig(file_name, bbox_inches="tight", pad_inches=0.1)
@@ -257,6 +273,7 @@ class SOMVisualizer:
     def plot_hit_map(
         self,
         colormap: str = "YlOrRd",
+        title: str | None = None,
         file_name: str | None = None,
         show: bool = True,
     ):
@@ -264,6 +281,7 @@ class SOMVisualizer:
         Plot a hit map showing the number of data points mapped to each node.
 
         :param colormap: A string representing the colormap to be used for the visualization.
+        :param title: Optional title for the plot. If None, no title is displayed.
         :param file_name: Optional filename to save the plot.
         :param show: Whether to display the plot.
         """
@@ -304,10 +322,14 @@ class SOMVisualizer:
         ax.set_xlim(-xlim_padding, map_width + xlim_padding)
         ax.set_ylim(-ylim_padding, map_height + ylim_padding)
         ax.set_aspect("equal")
-        ax.set_title("Hit Map", fontproperties=self.font_prop, fontsize=self.font_size + 4)
+
+        # Set title only if provided
+        if title is not None:
+            ax.set_title(title, fontproperties=self.font_prop, fontsize=self.font_size + 4)
+
         ax.set_xticks([])
         ax.set_yticks([])
-        plt.colorbar(pc, ax=ax, label="Number of hits")
+        plt.colorbar(pc, ax=ax, label="Number of hits", shrink=0.7)
 
         if file_name is not None:
             plt.savefig(file_name, bbox_inches="tight", pad_inches=0.1)
@@ -316,12 +338,14 @@ class SOMVisualizer:
 
     def plot_class_distribution(
         self,
+        title: str | None = None,
         file_name: str | None = None,
         show: bool = True,
     ):
         """
         Plot class distribution map showing the distribution of classes at each node with pie charts.
 
+        :param title: Optional title for the plot. If None, no title is displayed.
         :param file_name: Optional filename to save the plot.
         :param show: Whether to display the plot.
         """
@@ -394,9 +418,11 @@ class SOMVisualizer:
         ax.set_xlim(-xlim_padding, map_width + xlim_padding)
         ax.set_ylim(-ylim_padding, map_height + ylim_padding)
         ax.set_aspect("equal")
-        ax.set_title(
-            "Class Distribution Map", fontproperties=self.font_prop, fontsize=self.font_size + 4
-        )
+
+        # Set title only if provided
+        if title is not None:
+            ax.set_title(title, fontproperties=self.font_prop, fontsize=self.font_size + 4)
+
         ax.set_xticks([])
         ax.set_yticks([])
 
@@ -418,5 +444,283 @@ class SOMVisualizer:
 
         if file_name is not None:
             plt.savefig(file_name, bbox_inches="tight", pad_inches=0.1)
+        if show:
+            plt.show()
+
+    def plot_sammon_projection(
+        self,
+        show_nodes: bool = True,
+        show_data_points: bool = True,
+        show_connections: bool = False,
+        show_legend: bool = True,
+        show_labels: bool = False,
+        node_size: int = 150,
+        data_point_size: int = 80,
+        connection_style: str = "line",  # "line" or "spring"
+        colormap: str = "tab10",
+        max_iter: int = 500,
+        learning_rate: float = 0.2,
+        random_state: int | None = None,
+        title: str | None = None,
+        file_name: str | None = None,
+        show: bool = True,
+    ):
+        """
+        Plot Sammon's mapping projection of SOM weights and/or data points.
+
+        Sammon's mapping projects high-dimensional data to 2D while preserving
+        inter-point distances, providing an alternative view of the data structure
+        that is independent of the SOM grid topology.
+
+        :param show_nodes: Whether to show SOM nodes in the projection.
+        :param show_data_points: Whether to show data points in the projection.
+        :param show_connections: Whether to show connections between adjacent SOM nodes.
+        :param show_legend: Whether to show the legend for data points.
+        :param show_labels: Whether to show labels on data points.
+        :param node_size: Size of SOM node markers.
+        :param data_point_size: Size of data point markers.
+        :param connection_style: Style for node connections ("line" or "spring").
+        :param colormap: Colormap to use for class colors.
+        :param max_iter: Maximum iterations for Sammon's mapping optimization.
+        :param learning_rate: Learning rate for gradient descent.
+        :param random_state: Random seed for reproducibility.
+        :param title: Optional title for the plot. If None, no title is displayed.
+        :param file_name: Optional filename to save the plot.
+        :param show: Whether to display the plot.
+        """
+        # Create figure with white background
+        fig, ax = plt.subplots(figsize=(12, 10), facecolor='white')
+        ax.set_facecolor('white')
+
+        # Combine weights and data for projection if both are shown
+        if show_nodes and show_data_points:
+            # Flatten SOM weights to get node vectors
+            weights_flat = self.som.weights.reshape(-1, self.som.weights.shape[2])
+            combined_data = np.vstack([weights_flat, self.data])
+
+            # Project combined data
+            projected = sammon_mapping(
+                combined_data,
+                n_components=2,
+                max_iter=max_iter,
+                learning_rate=learning_rate,
+                random_state=random_state,
+            )
+
+            # Split projected data back
+            n_nodes = weights_flat.shape[0]
+            nodes_projected = projected[:n_nodes]
+            data_projected = projected[n_nodes:]
+
+        elif show_nodes:
+            # Project only SOM nodes
+            weights_flat = self.som.weights.reshape(-1, self.som.weights.shape[2])
+            nodes_projected = sammon_mapping(
+                weights_flat,
+                n_components=2,
+                max_iter=max_iter,
+                learning_rate=learning_rate,
+                random_state=random_state,
+            )
+            data_projected = None
+
+        elif show_data_points:
+            # Project only data points
+            data_projected = sammon_mapping(
+                self.data,
+                n_components=2,
+                max_iter=max_iter,
+                learning_rate=learning_rate,
+                random_state=random_state,
+            )
+            nodes_projected = None
+
+        else:
+            raise ValueError("At least one of show_nodes or show_data_points must be True")
+
+        # Plot SOM nodes
+        if show_nodes and nodes_projected is not None:
+            # Plot connections between adjacent nodes if requested
+            if show_connections:
+                # Determine connection style
+                if connection_style == "spring":
+                    # Spring-like connections with varying thickness based on distance
+                    for i in range(self.som.x_size):
+                        for j in range(self.som.y_size):
+                            idx = i * self.som.y_size + j
+                            # Connect to right neighbor
+                            if j < self.som.y_size - 1:
+                                idx_right = i * self.som.y_size + (j + 1)
+                                dist = np.linalg.norm(
+                                    nodes_projected[idx] - nodes_projected[idx_right]
+                                )
+                                # Thicker lines for shorter distances (stronger connections)
+                                linewidth = max(0.3, 2.0 / (1 + dist))
+                                ax.plot(
+                                    [nodes_projected[idx, 0], nodes_projected[idx_right, 0]],
+                                    [nodes_projected[idx, 1], nodes_projected[idx_right, 1]],
+                                    color='#CCCCCC',
+                                    alpha=0.4,
+                                    linewidth=linewidth,
+                                    zorder=1
+                                )
+                            # Connect to bottom neighbor
+                            if i < self.som.x_size - 1:
+                                idx_bottom = (i + 1) * self.som.y_size + j
+                                dist = np.linalg.norm(
+                                    nodes_projected[idx] - nodes_projected[idx_bottom]
+                                )
+                                linewidth = max(0.3, 2.0 / (1 + dist))
+                                ax.plot(
+                                    [nodes_projected[idx, 0], nodes_projected[idx_bottom, 0]],
+                                    [nodes_projected[idx, 1], nodes_projected[idx_bottom, 1]],
+                                    color='#CCCCCC',
+                                    alpha=0.4,
+                                    linewidth=linewidth,
+                                    zorder=1
+                                )
+                else:  # "line" style
+                    for i in range(self.som.x_size):
+                        for j in range(self.som.y_size):
+                            idx = i * self.som.y_size + j
+                            # Connect to right neighbor
+                            if j < self.som.y_size - 1:
+                                idx_right = i * self.som.y_size + (j + 1)
+                                ax.plot(
+                                    [nodes_projected[idx, 0], nodes_projected[idx_right, 0]],
+                                    [nodes_projected[idx, 1], nodes_projected[idx_right, 1]],
+                                    color='#AAAAAA',
+                                    alpha=0.35,
+                                    linewidth=0.8,
+                                    zorder=1
+                                )
+                            # Connect to bottom neighbor
+                            if i < self.som.x_size - 1:
+                                idx_bottom = (i + 1) * self.som.y_size + j
+                                ax.plot(
+                                    [nodes_projected[idx, 0], nodes_projected[idx_bottom, 0]],
+                                    [nodes_projected[idx, 1], nodes_projected[idx_bottom, 1]],
+                                    color='#AAAAAA',
+                                    alpha=0.35,
+                                    linewidth=0.8,
+                                    zorder=1
+                                )
+
+            # Plot nodes with improved styling
+            ax.scatter(
+                nodes_projected[:, 0],
+                nodes_projected[:, 1],
+                c='#E8E8E8',
+                s=node_size,
+                marker='o',
+                edgecolors='#555555',
+                linewidths=1.5,
+                alpha=0.7,
+                label='SOM Nodes',
+                zorder=2
+            )
+
+        # Plot data points
+        if show_data_points and data_projected is not None:
+            if (
+                self.target is not None
+                and self.target_names is not None
+                and len(self.target_names) > 0
+            ):
+                # Get colormap
+                cmap = plt.get_cmap(colormap)
+
+                # Plot with class colors
+                for class_idx in range(len(self.target_names)):
+                    mask = self.target == class_idx
+                    if np.any(mask):
+                        color = cmap(float(class_idx) / len(self.target_names))
+                        ax.scatter(
+                            data_projected[mask, 0],
+                            data_projected[mask, 1],
+                            c=[color],
+                            s=data_point_size,
+                            marker='o',
+                            edgecolors='white',
+                            linewidths=1.5,
+                            alpha=0.85,
+                            label=self.target_names[class_idx],
+                            zorder=3
+                        )
+
+                        # Add labels if requested
+                        if show_labels:
+                            for i, idx in enumerate(np.where(mask)[0]):
+                                ax.annotate(
+                                    self.target_names[class_idx],
+                                    (data_projected[idx, 0], data_projected[idx, 1]),
+                                    xytext=(5, 5),
+                                    textcoords='offset points',
+                                    fontsize=8,
+                                    alpha=0.7,
+                                    fontproperties=self.font_prop
+                                )
+            else:
+                # Plot without class information
+                ax.scatter(
+                    data_projected[:, 0],
+                    data_projected[:, 1],
+                    c='#3498db',
+                    s=data_point_size,
+                    marker='o',
+                    edgecolors='white',
+                    linewidths=1.5,
+                    alpha=0.85,
+                    label='Data Points',
+                    zorder=3
+                )
+
+        # Styling
+        ax.set_xlabel('Sammon Dimension 1', fontproperties=self.font_prop, fontsize=self.font_size + 2)
+        ax.set_ylabel('Sammon Dimension 2', fontproperties=self.font_prop, fontsize=self.font_size + 2)
+
+        # Set title only if provided
+        if title is not None:
+            ax.set_title(
+                title,
+                fontproperties=self.font_prop,
+                fontsize=self.font_size + 6,
+                fontweight='bold',
+                pad=20
+            )
+
+        ax.set_aspect('equal')
+
+        # Improved grid
+        ax.grid(True, alpha=0.2, linestyle='--', linewidth=0.5, color='gray')
+        ax.set_axisbelow(True)
+
+        # Remove top and right spines for cleaner look
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['left'].set_linewidth(0.5)
+        ax.spines['bottom'].set_linewidth(0.5)
+
+        # Legend styling
+        if show_legend:
+            legend = ax.legend(
+                prop=self.font_prop,
+                loc='upper left',
+                bbox_to_anchor=(1.02, 1),
+                frameon=True,
+                fancybox=True,
+                shadow=True,
+                ncol=1,
+                fontsize=self.font_size
+            )
+            legend.get_frame().set_facecolor('white')
+            legend.get_frame().set_alpha(0.95)
+            legend.get_frame().set_edgecolor('#CCCCCC')
+
+        # Tight layout
+        plt.tight_layout()
+
+        if file_name is not None:
+            plt.savefig(file_name, bbox_inches="tight", pad_inches=0.2, dpi=300, facecolor='white')
         if show:
             plt.show()

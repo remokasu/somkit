@@ -124,6 +124,59 @@ class SOMTrainer:
         # Initialize the weight matrix using the first two principal components
         self.weights = np.tensordot(grid, two_principal_components, axes=1) + pca.mean_
 
+    def initialize_weights_linearly(self) -> None:
+        """
+        Initialize the weight matrix using linear initialization (ordered initialization).
+
+        This is the standard initialization method used in SOM_PAK. The weight vectors
+        are initialized to lie in a linear subspace spanned by the two largest principal
+        components of the data, arranged in an ordered grid.
+
+        This method provides:
+        - Fast and stable convergence
+        - Good reproducibility
+        - Better initial topology preservation than random initialization
+
+        The weights are initialized as:
+        w[i,j] = mean + alpha * PC1 + beta * PC2
+        where alpha and beta vary linearly across the grid.
+
+        Note: This method should be called after setting the input data using the `set_data` method.
+        """
+        assert (
+            self.data is not None
+        ), "Data must be set using 'set_data' before initializing weights linearly."
+
+        # Calculate the first two principal components of the data using PCA
+        pca = PCA(n_components=2)
+        pca.fit(self.data)
+
+        # Get the two largest principal components
+        pc1 = pca.components_[0]  # First principal component
+        pc2 = pca.components_[1]  # Second principal component
+        mean = pca.mean_
+
+        # Calculate the standard deviations along the principal components
+        # This helps determine the spread of the initial grid
+        data_centered = self.data - mean
+        proj1 = np.dot(data_centered, pc1)
+        proj2 = np.dot(data_centered, pc2)
+        std1 = np.std(proj1)
+        std2 = np.std(proj2)
+
+        # Create linearly spaced coefficients for the grid
+        # Range from -2*std to +2*std to cover most of the data
+        alpha_range = np.linspace(-2 * std1, 2 * std1, self.x_size)
+        beta_range = np.linspace(-2 * std2, 2 * std2, self.y_size)
+
+        # Initialize weights
+        self.weights = np.zeros((self.x_size, self.y_size, self.input_dim))
+
+        for i in range(self.x_size):
+            for j in range(self.y_size):
+                # Linear combination: w = mean + alpha*PC1 + beta*PC2
+                self.weights[i, j] = mean + alpha_range[i] * pc1 + beta_range[j] * pc2
+
     def shuffle_data(self):
         """
         Shuffle the input data and target labels (if available) in unison.
@@ -138,14 +191,27 @@ class SOMTrainer:
     def standardize_data(self):
         """
         Standardize the input data to have a mean of 0 and a standard deviation of 1.
+
+        This is equivalent to normalize_data(method='standard').
         """
-        self.data = fit_transform(self.data)
+        self.data = fit_transform(self.data, method='standard')
+
+    def normalize_data(self, method='standard'):
+        """
+        Normalize the input data using the specified method.
+
+        :param method: Normalization method. Options:
+            - 'standard': Z-score normalization (mean=0, std=1)
+            - 'minmax': Min-Max normalization to [0, 1]
+            - 'variance': Variance normalization (divide by std only)
+        """
+        self.data = fit_transform(self.data, method=method)
 
     def train(
         self, n_epochs: int, batch_size: int = 1, shuffle_each_epoch: bool = True
     ) -> None:
         """
-        Train the SOM using the given input data.
+        Train the SOM using sequential (online) learning.
 
         :param n_epochs: The number of epochs for training.
         :param batch_size: The batch size for training. If None, online learning will be used.
@@ -184,6 +250,50 @@ class SOMTrainer:
 
         # self._compute_performance_metrics(self.data)
 
+    def train_batch(
+        self, n_epochs: int, shuffle_each_epoch: bool = True
+    ) -> None:
+        """
+        Train the SOM using batch learning algorithm.
+
+        In batch learning, all data samples are processed before updating weights.
+        This provides more stable convergence and doesn't require a learning rate parameter.
+
+        The batch SOM algorithm:
+        1. Find BMU for each data sample
+        2. For each node, collect all samples that have it as BMU
+        3. Update node weight as weighted average of collected samples
+           (weighted by neighborhood function)
+
+        :param n_epochs: The number of epochs for training.
+        :param shuffle_each_epoch: Whether to shuffle the input data before each epoch.
+        """
+        assert (
+            self.data is not None
+        ), "Data must be set using 'set_data' before training."
+
+        if self.weights is None:
+            self.initialize_weights_randomly()
+
+        # Set tau to n_epochs if not specified
+        tau = self.tau if self.tau is not None else n_epochs
+
+        for epoch in tqdm(range(n_epochs)):
+            if shuffle_each_epoch:
+                self.shuffle_data()
+
+            # Update radius using exponential decay
+            if self.dynamic_radius:
+                self.n_radius = self._calculate_radius(epoch, tau)
+
+            # Batch update
+            self._batch_update(self.get_radius())
+
+            # Save checkpoint at specified intervals
+            if epoch % self.checkpoint_interval == 0:
+                checkpoint_path = self._get_checkpoint_file_path(epoch)
+                self._save_checkpoint(checkpoint_path)
+
     def _find_bmu(self, sample: np.ndarray) -> Tuple[np.ndarray, Tuple[int, int]]:
         """
         Find the Best Matching Unit (BMU) in the SOM for the given input sample.
@@ -208,7 +318,7 @@ class SOMTrainer:
         current_radius: float,
     ) -> None:
         """
-        Update the weights of the SOM using the given batch of input samples.
+        Update the weights of the SOM using the given batch of input samples (sequential mode).
 
         Weight update formula: w_i(t+1) = w_i(t) + η(t) · h_ij(t) · (x - w_i(t))
 
@@ -241,6 +351,69 @@ class SOMTrainer:
             # Formula: w_i(t+1) = w_i(t) + η(t) · h_ij(t) · (x - w_i(t))
             new_weights = affected_weights + self.learning_rate * influence * (sample - affected_weights)
             self.weights[affected_nodes[:, 0], affected_nodes[:, 1], :] = new_weights
+
+    def _batch_update(self, current_radius: float) -> None:
+        """
+        Perform batch SOM weight update (vectorized version).
+
+        In batch SOM, weights are updated using the formula:
+        w_i(t+1) = Σ_j h_ij(t) · x_j / Σ_j h_ij(t)
+
+        where:
+        - w_i is the weight vector of node i
+        - h_ij is the neighborhood function between node i and BMU of sample j
+        - x_j is data sample j
+
+        This is equivalent to a weighted average where each node's new weight
+        is the weighted mean of all data samples, weighted by the neighborhood function.
+
+        :param current_radius: The current radius of the neighborhood function.
+        """
+        # Find BMUs for all data samples
+        bmus = self.get_bmus(self.data)  # List of (i, j) tuples
+        bmu_array = np.array(bmus)  # Shape: (n_samples, 2)
+        bmu_x = bmu_array[:, 0]  # Shape: (n_samples,)
+        bmu_y = bmu_array[:, 1]  # Shape: (n_samples,)
+
+        # Create grid of all node coordinates
+        # node_x, node_y: Shape (x_size, y_size)
+        node_x, node_y = np.meshgrid(np.arange(self.x_size), np.arange(self.y_size), indexing='ij')
+
+        # Reshape for broadcasting: (x_size, y_size, 1)
+        node_x = node_x[:, :, np.newaxis]
+        node_y = node_y[:, :, np.newaxis]
+
+        # BMU coordinates for broadcasting: (1, 1, n_samples)
+        bmu_x = bmu_x[np.newaxis, np.newaxis, :]
+        bmu_y = bmu_y[np.newaxis, np.newaxis, :]
+
+        # Calculate distances from all nodes to all BMUs
+        # distances: Shape (x_size, y_size, n_samples)
+        distances = self.topology.topology_function(
+            node_x, node_y, bmu_x, bmu_y
+        )
+
+        # Calculate neighborhood influence for all node-BMU pairs
+        # influences: Shape (x_size, y_size, n_samples)
+        influences = self.n_func(current_radius, distances, self.get_radius())
+
+        # Calculate weighted sum: Σ h_ij * x_j
+        # influences: (x_size, y_size, n_samples, 1)
+        # data: (1, 1, n_samples, n_features)
+        # numerator: (x_size, y_size, n_features)
+        influences_expanded = influences[:, :, :, np.newaxis]  # (x_size, y_size, n_samples, 1)
+        data_expanded = self.data[np.newaxis, np.newaxis, :, :]  # (1, 1, n_samples, n_features)
+        numerator = np.sum(influences_expanded * data_expanded, axis=2)
+
+        # Calculate sum of influences: Σ h_ij
+        # denominator: (x_size, y_size, 1)
+        denominator = np.sum(influences, axis=2, keepdims=True)
+
+        # Avoid division by zero
+        denominator = np.where(denominator == 0, 1e-10, denominator)
+
+        # Update weights as weighted average
+        self.weights = numerator / denominator
 
     def _calculate_learning_rate(self, t: int, tau: float) -> float:
         """

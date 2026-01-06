@@ -1,7 +1,8 @@
-from somkit import functions
+from somkit import functions, projection
 from somkit.data_loader import DatasetWrapper, SOMPakDataLoader, load_som_pak_data
 from somkit.evaluator import SOMEvaluator
 from somkit.functions import neighborhood
+from somkit.projection import sammon_mapping
 from somkit.topology.som_topology import HexagonalTopology, RectangularTopology
 from somkit.trainer.som_trainer import SOMTrainer, create_trainer, load_trainer
 from somkit.visualizer import SOMVisualizer
@@ -19,4 +20,6 @@ __all__ = [
     "functions",
     "neighborhood",
     "load_som_pak_data",
+    "projection",
+    "sammon_mapping",
 ]

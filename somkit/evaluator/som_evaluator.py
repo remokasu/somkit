@@ -108,7 +108,9 @@ class SOMEvaluator:
         bmus = self.som.get_bmus(self.data)
 
         # Calculate the Euclidean distance between each data point and its corresponding BMU
-        distances = np.linalg.norm(self.data - self.weights[bmus], axis=1)
+        # bmus is a list of tuples [(x1,y1), (x2,y2), ...], so we need to extract weights manually
+        bmu_weights = np.array([self.weights[x, y] for x, y in bmus])
+        distances = np.linalg.norm(self.data - bmu_weights, axis=1)
 
         # Calculate the average distance
         quantization_error = np.mean(distances)

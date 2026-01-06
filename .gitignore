@@ -10,3 +10,9 @@ checkpoints/
 build/
 dist/
 somkit.egg-info/
+.claude/
+
+# Generated example outputs
+examples/*.png
+examples/*_som_sammon_model
+test_sammon_*.py
