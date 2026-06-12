@@ -3,13 +3,18 @@ import somkit
 # Set SOM parameters
 x_size = 10
 y_size = 10
-batch_size = 1
-n_epochs = 500
-learning_rate = 0.01
-initial_radius = 5.0
-shuffle_each_epoch = False
 dynamic_radius = True
-random_seed = 42
+random_seed = 123  # SOM_PAK randinit seed (command.sh RAND_SEED)
+
+# SOM_PAK two-stage sequential learning (cf. SOM_PAK command.sh for animal)
+# Stage 1 = coarse ordering: radius ~ map diameter, higher alpha, short run
+LEARN1_RLEN = 1000
+LEARN1_ALPHA = 0.05
+LEARN1_RADIUS = 10
+# Stage 2 = fine tuning: small radius, lower alpha, 10x longer run
+LEARN2_RLEN = 10000
+LEARN2_ALPHA = 0.02
+LEARN2_RADIUS = 3
 
 # Load the 'animal.dat' dataset using the SOMPakDataLoader
 animal_data = somkit.load_som_pak_data("animal.dat")
@@ -18,11 +23,11 @@ animal_data = somkit.load_som_pak_data("animal.dat")
 som = somkit.create_trainer(
     data=animal_data,
     size=(x_size, y_size),
-    learning_rate=learning_rate,
+    learning_rate=LEARN1_ALPHA,
     n_func=somkit.functions.gaussian,
     # n_func=somkit.functions.bubble,
     # n_func=somkit.functions.mexican_hat,
-    initial_radius=initial_radius,
+    initial_radius=LEARN1_RADIUS,
     dynamic_radius=dynamic_radius,
     random_seed=random_seed,
     checkpoint_interval=10,
@@ -31,7 +36,8 @@ som = somkit.create_trainer(
 )
 
 # Normalize the input data
-som.standardize_data()
+# SOM_PAK trains on raw data (command.sh does no normalization); disabled for conformance.
+# som.standardize_data()
 # or, use other normalization methods
 # som.normalize_data(method='standard')  # Z-score normalization (mean=0, std=1)
 # som.normalize_data(method='minmax')    # Min-Max normalization [0, 1]
@@ -44,12 +50,18 @@ som.initialize_weights_randomly()
 # or, initialize the weights using linear mapping (recommended)
 # som.initialize_weights_linearly()
 
-# Train the SOM using sequential learning
-som.train(
-    n_epochs=n_epochs, batch_size=batch_size, shuffle_each_epoch=shuffle_each_epoch
+# Train the SOM the SOM_PAK way: two-stage sequential learning (train_pak x2).
+# The same trainer is reused, so stage 2 continues from stage 1's weights,
+# mirroring SOM_PAK's two consecutive `vsom` calls in command.sh.
+# seed=1 matches `vsom -rand 1` in command.sh.
+som.train_pak(
+    rlen=LEARN1_RLEN, alpha=LEARN1_ALPHA, radius=LEARN1_RADIUS,
+    neighborhood="bubble", seed=1,
 )
-# or, train using batch learning
-# som.train_batch(n_epochs=n_epochs)
+som.train_pak(
+    rlen=LEARN2_RLEN, alpha=LEARN2_ALPHA, radius=LEARN2_RADIUS,
+    neighborhood="bubble", seed=1,
+)
 
 # Save the trained SOM model
 som.save_model("animal_som_model")
@@ -70,7 +82,6 @@ visualizer = somkit.SOMVisualizer(som)
 
 # Plot the U-Matrix with data points
 visualizer.plot_umatrix(
-    show_data_points=True,
     title=None,  # Optional title for the plot (default: None, no title)
     file_name="umatrix_animal.png",
     show=False

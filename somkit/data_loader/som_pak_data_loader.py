@@ -66,13 +66,21 @@ class SOMPakDataLoader:
         # Get the number of dimensions
         num_features = int(data[0].strip())
 
-        # Separate the data and labels
+        # Separate the data and labels. SOM_PAK per-row labels (case names) are
+        # optional: a row may hold exactly `num_features` numeric tokens (no
+        # label) or `num_features` + a trailing label token. Use the declared
+        # feature count to decide, instead of always dropping the last token.
         X = []
         y = []
         for line in data[1:]:
-            line = line.strip().split()
-            X.append(list(map(float, line[:-1])))
-            y.append(line[-1])
+            tokens = line.strip().split()
+            if len(tokens) < num_features:
+                raise ValueError(
+                    f"SOM_PAK data row has {len(tokens)} tokens, expected at "
+                    f"least {num_features} (the declared dimension): {line!r}"
+                )
+            X.append(list(map(float, tokens[:num_features])))
+            y.append(tokens[num_features] if len(tokens) > num_features else "")
 
         # Convert labels to numbers
         label_map = {}

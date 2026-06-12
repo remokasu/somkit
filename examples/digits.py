@@ -5,14 +5,20 @@ import somkit
 # Set SOM parameters
 x_size = 50
 y_size = 50
-batch_size = 1
-n_epochs = 100
-learning_rate = 0.01
-initial_radius = 25.0
-shuffle_each_epoch = True
 dynamic_radius = False
 random_seed = 42
-tau = None  # Time constant for decay (None = defaults to n_epochs)
+
+# SOM_PAK two-stage sequential learning (cf. SOM_PAK command.sh).
+# Stage 1 = coarse ordering: radius ~ map diameter, higher alpha, short run
+LEARN1_RLEN = 2500
+LEARN1_ALPHA = 0.05
+LEARN1_RADIUS = 50
+# Stage 2 = fine tuning: small radius, lower alpha, longer run.
+# NOTE: a 50x50 map x 64-dim data is heavy for sequential training, so the
+# fine phase is kept modest (~14 passes). Increase LEARN2_RLEN for better quality.
+LEARN2_RLEN = 25000
+LEARN2_ALPHA = 0.02
+LEARN2_RADIUS = 15
 
 # Load dataset
 input_data = load_digits()
@@ -21,21 +27,18 @@ input_data = load_digits()
 som = somkit.create_trainer(
     data=input_data,
     size=(x_size, y_size),
-    learning_rate=learning_rate,
+    learning_rate=LEARN1_ALPHA,
     n_func=somkit.functions.gaussian,  # or somkit.functions.bubble, somkit.functions.mexican_hat
-    initial_radius=initial_radius,
+    initial_radius=LEARN1_RADIUS,
     dynamic_radius=dynamic_radius,
     random_seed=random_seed,
     checkpoint_interval=10,
-    tau=tau,
     topology="hexagonal",  # or "rectangular"
 )
 
-# Shuffle the input data (optional)
-som.shuffle_data()
-
 # Normalize the input data
-som.standardize_data()
+# SOM_PAK trains on raw data (no normalization); disabled for conformance.
+# som.standardize_data()
 # or, use other normalization methods
 # som.normalize_data(method='standard')  # Z-score normalization (mean=0, std=1)
 # som.normalize_data(method='minmax')    # Min-Max normalization [0, 1]
@@ -48,10 +51,15 @@ som.initialize_weights_randomly()
 # or, initialize the weights using linear mapping (recommended)
 # som.initialize_weights_linearly()
 
-# Train the SOM using sequential learning
-som.train(n_epochs=n_epochs, batch_size=batch_size, shuffle_each_epoch=shuffle_each_epoch)
-# or, train using batch learning
-# som.train_batch(n_epochs=n_epochs)
+# Train the SOM the SOM_PAK way: two-stage sequential learning (train_pak x2).
+# The same trainer is reused, so stage 2 continues from stage 1's weights,
+# mirroring SOM_PAK's two consecutive `vsom` calls.
+som.train_pak(
+    rlen=LEARN1_RLEN, alpha=LEARN1_ALPHA, radius=LEARN1_RADIUS, neighborhood="bubble",
+)
+som.train_pak(
+    rlen=LEARN2_RLEN, alpha=LEARN2_ALPHA, radius=LEARN2_RADIUS, neighborhood="bubble",
+)
 
 # Evaluate the trained SOM using various metrics
 evaluator = somkit.SOMEvaluator(som)
@@ -66,9 +74,8 @@ print("Topological Error: ", topological_error)
 # Visualize the SOM using various visualization methods
 som_visualizer = somkit.SOMVisualizer(som)
 
-# Plot the U-Matrix with data points
+# Plot the U-Matrix with per-unit vcal labels
 som_visualizer.plot_umatrix(
-    show_data_points=True,
     title=None,  # Optional title for the plot (default: None, no title)
     file_name="umatrix_digits.png",
     show=False,

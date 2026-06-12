@@ -1,3 +1,4 @@
+from somkit.data_loader.som_data import SOMData
 from somkit.data_loader.som_pak_data_loader import (
     Bunch,
     DatasetWrapper,
@@ -5,4 +6,10 @@ from somkit.data_loader.som_pak_data_loader import (
     load_som_pak_data,
 )
 
-__all__ = ["DatasetWrapper", "SOMPakDataLoader", "load_som_pak_data", "Bunch"]
+__all__ = [
+    "DatasetWrapper",
+    "SOMPakDataLoader",
+    "load_som_pak_data",
+    "Bunch",
+    "SOMData",
+]

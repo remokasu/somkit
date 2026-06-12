@@ -1,0 +1,1 @@
+Quantization error of /home/tw/remokasu/somkit/test/golden/ex.dat with map /home/tw/remokasu/somkit/test/golden/ex_trained.cod is 4.197539 per sample (3840 samples)

@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 
 from somkit.decomposition import PCA
+from somkit.exceptions import SomkitError
 
 
 def sammon_mapping(
@@ -30,7 +31,8 @@ def sammon_mapping(
     :param n_components: Number of dimensions in the projected space (default: 2).
     :param max_iter: Maximum number of iterations for optimization (default: 500).
     :param tol: Convergence tolerance for the stress function (default: 1e-4).
-    :param learning_rate: Learning rate for gradient descent (default: 0.2).
+    :param learning_rate: Step scaling factor for the pseudo-Newton update,
+        equivalent to MAGIC in SOM_PAK sammon.c (default: 0.2).
     :param init: Initialization method ('pca' or 'random') (default: 'pca').
     :param random_state: Random seed for reproducibility (default: None).
     :return: Projected data of shape (n_samples, n_components).
@@ -40,6 +42,22 @@ def sammon_mapping(
     if n_components >= n_features:
         raise ValueError(
             f"n_components ({n_components}) must be less than n_features ({n_features})"
+        )
+
+    # Collapse identical rows before optimizing: a zero original-space distance
+    # makes the stress gradient blow up (SOM_PAK sammon.c removes duplicates
+    # via remove_identicals). Duplicates are restored at the end so the output
+    # keeps one row per input row. Note: np.unique sorts rows lexicographically,
+    # so the PCA initialization sees a permuted input; the per-row result is
+    # unaffected because inverse_index maps coordinates back to input order.
+    data, inverse_index = np.unique(data, axis=0, return_inverse=True)
+    n_samples = data.shape[0]
+
+    if n_samples < n_components:
+        raise SomkitError(
+            f"After removing duplicate rows, only {n_samples} unique sample(s) "
+            f"remain, which is fewer than n_components={n_components}. "
+            "Provide data with more distinct rows."
         )
 
     # Set random seed
@@ -54,8 +72,8 @@ def sammon_mapping(
             dist_original[i, j] = dist
             dist_original[j, i] = dist
 
-    # Avoid division by zero
-    dist_original[dist_original == 0] = 1e-10
+    # Avoid division by zero on the diagonal
+    np.fill_diagonal(dist_original, 1e-10)
 
     # Compute the normalization constant
     c = 1.0 / np.sum(dist_original)
@@ -95,26 +113,31 @@ def sammon_mapping(
 
         prev_stress = stress
 
-        # Calculate gradient for each point
+        # Pseudo-Newton update for each point (SOM_PAK sammon.c sammon_iterate):
+        # move each coordinate by MAGIC * e1 / |e2|, where e1 and e2 are the
+        # first and second partial derivatives of the stress.
+        Y_new = np.empty_like(Y)
         for i in range(n_samples):
-            delta = np.zeros(n_components)
+            e1 = np.zeros(n_components)
+            e2 = np.zeros(n_components)
 
             for j in range(n_samples):
                 if i == j:
                     continue
 
-                # Distance difference
-                dist_diff = dist_original[i, j] - dist_projected[i, j]
+                yd = Y[i] - Y[j]
+                d_proj = dist_projected[i, j]
+                dq = dist_original[i, j] - d_proj
+                dr = dist_original[i, j] * d_proj
+                e1 += yd * dq / dr
+                e2 += (dq - yd**2 * (1.0 + dq / d_proj) / d_proj) / dr
 
-                # Gradient contribution from point j
-                if dist_projected[i, j] > 1e-10:
-                    factor = -2 * c * dist_diff / (dist_original[i, j] * dist_projected[i, j])
-                    delta += factor * (Y[i] - Y[j])
+            Y_new[i] = Y[i] + learning_rate * e1 / np.maximum(np.abs(e2), 1e-10)
 
-            # Update position with gradient descent
-            Y[i] -= learning_rate * delta
+        # Move the center of mass to the origin (as SOM_PAK sammon.c does)
+        Y = Y_new - Y_new.mean(axis=0)
 
-    return Y
+    return Y[inverse_index]
 
 
 def sammon_mapping_batch(
@@ -136,7 +159,8 @@ def sammon_mapping_batch(
     :param n_components: Number of dimensions in the projected space (default: 2).
     :param max_iter: Maximum number of iterations for optimization (default: 500).
     :param tol: Convergence tolerance for the stress function (default: 1e-4).
-    :param learning_rate: Learning rate for gradient descent (default: 0.2).
+    :param learning_rate: Step scaling factor for the pseudo-Newton update,
+        equivalent to MAGIC in SOM_PAK sammon.c (default: 0.2).
     :param init: Initialization method ('pca' or 'random') (default: 'pca').
     :param random_state: Random seed for reproducibility (default: None).
     :return: Projected data of shape (n_samples, n_components).
@@ -148,6 +172,17 @@ def sammon_mapping_batch(
             f"n_components ({n_components}) must be less than n_features ({n_features})"
         )
 
+    # Collapse identical rows before optimizing (see sammon_mapping)
+    data, inverse_index = np.unique(data, axis=0, return_inverse=True)
+    n_samples = data.shape[0]
+
+    if n_samples < n_components:
+        raise SomkitError(
+            f"After removing duplicate rows, only {n_samples} unique sample(s) "
+            f"remain, which is fewer than n_components={n_components}. "
+            "Provide data with more distinct rows."
+        )
+
     # Set random seed
     rng = np.random.RandomState(random_state)
 
@@ -156,9 +191,8 @@ def sammon_mapping_batch(
     data_expanded_2 = data[np.newaxis, :, :]
     dist_original = np.linalg.norm(data_expanded_1 - data_expanded_2, axis=2)
 
-    # Avoid division by zero
+    # Avoid division by zero on the diagonal
     np.fill_diagonal(dist_original, 1e-10)
-    dist_original[dist_original == 0] = 1e-10
 
     # Compute the normalization constant
     c = 1.0 / np.sum(dist_original)
@@ -187,7 +221,7 @@ def sammon_mapping_batch(
 
         # Calculate stress (error function)
         diff = dist_original - dist_projected
-        stress = c * np.sum((diff ** 2) / dist_original) / 2  # Divide by 2 to avoid double counting
+        stress = c * np.sum((diff ** 2) / dist_original)
 
         # Check for convergence
         if abs(prev_stress - stress) < tol:
@@ -195,21 +229,26 @@ def sammon_mapping_batch(
 
         prev_stress = stress
 
-        # Calculate gradients for all points (vectorized)
-        # factor shape: (n_samples, n_samples)
-        factor = -2 * c * diff / (dist_original * dist_projected)
+        # Pseudo-Newton update, vectorized (SOM_PAK sammon.c sammon_iterate):
+        # move each coordinate by MAGIC * e1 / |e2|, where e1 and e2 are the
+        # first and second partial derivatives of the stress.
+        yd = Y[:, np.newaxis, :] - Y[np.newaxis, :, :]
+        dr = dist_original * dist_projected
 
-        # Set diagonal to 0 to exclude self-interactions
-        np.fill_diagonal(factor, 0)
+        ratio = diff / dr
+        np.fill_diagonal(ratio, 0)
+        e1 = np.sum(yd * ratio[:, :, np.newaxis], axis=1)
 
-        # Compute gradient: sum over j of factor[i,j] * (Y[i] - Y[j])
-        # Shape broadcasting: (n_samples, n_samples, 1) * (n_samples, n_samples, n_components)
-        gradient = np.sum(
-            factor[:, :, np.newaxis] * (Y[:, np.newaxis, :] - Y[np.newaxis, :, :]),
-            axis=1
-        )
+        curvature = (1.0 + diff / dist_projected) / dist_projected
+        e2_terms = (diff[:, :, np.newaxis] - yd**2 * curvature[:, :, np.newaxis]) / dr[:, :, np.newaxis]
+        # The i==j term must be excluded (as in the loop version): dr[i,i] is
+        # 1e-20, so any non-zero numerator on the diagonal would explode.
+        e2_terms[np.arange(n_samples), np.arange(n_samples), :] = 0
+        e2 = np.sum(e2_terms, axis=1)
 
-        # Update positions with gradient descent
-        Y -= learning_rate * gradient
+        Y_new = Y + learning_rate * e1 / np.maximum(np.abs(e2), 1e-10)
 
-    return Y
+        # Move the center of mass to the origin (as SOM_PAK sammon.c does)
+        Y = Y_new - Y_new.mean(axis=0)
+
+    return Y[inverse_index]

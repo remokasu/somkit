@@ -14,5 +14,8 @@ somkit.egg-info/
 
 # Generated example outputs
 examples/*.png
+examples/*_som_model
 examples/*_som_sammon_model
-test_sammon_*.py
+examples/*.cod
+examples/*.vis
+/test_sammon_*.py

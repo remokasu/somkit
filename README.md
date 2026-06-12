@@ -1,10 +1,4 @@
-# somkit: A Python Implementation of Self-Organizing Maps (SOMs)
-
-![](doc/fig_iris.png)
-
-## Overview
-
-`somkit` is a simple implementation of Self-Organizing Maps (SOMs) in Python. This library provides an easy-to-use interface to train and visualize SOMs on various datasets. `somkit` can be used for clustering, data visualization, and dimensionality reduction tasks.
+# somkit: A Python Library for Self-Organizing Maps
 
 <div align="center">
   <table>
@@ -19,21 +13,29 @@
   </table>
 </div>
 
+## Overview
+
+`somkit` is a Python library for Self-Organizing Maps.
+
 ## Features
 
-- **Multiple topology support**: Hexagonal and Rectangular topologies for Self-Organizing Maps
-- **Dynamic learning rate and radius decay** following SOM algorithm standards
-- **Multiple visualization methods**:
-  - U-Matrix (distance map)
-  - Component Planes (feature distribution)
-  - Hit Map (data density distribution)
-  - Class Distribution Map (class boundaries)
-- **Model persistence**: Save and load trained models
-- **Comprehensive evaluation metrics**: WCSS, Silhouette Score, Topological Error
+- **Sequential training** via `train_pak`: `rlen` total steps, per-step linear decay (alpha to 0, radius to 1), `bubble`/`gaussian` neighborhood, `linear`/`inverse_t` alpha schedule
+- **Two-phase training** (coarse ordering + fine tuning) via `train_two_phase` or two `train_pak` calls
+- **Best-map selection** via `SOMTrainer.vfind`: train `n_trials` maps with different seeds, keep the lowest quantization error
+- **Per-sample BMU / quantization error** via `compute_visual` / `write_vis` (`.vis` output)
+- **Training snapshots**: save the codebook every N steps as numbered `.cod` files
+- **File interchange**: read/write `.cod` codebook files (`load_cod`/`save_cod`), load `.dat` data files (`load_som_pak_data`)
+- **Per-sample metadata** via `SOMData`: missing-component masks (`x` fields), sample weights, fixed-point BMUs
+- **`vcal`-equivalent label calibration** (`calibrate_labels`)
+- **Reproducible seeding** via `OrandRNG` (the `orand` linear congruential generator)
+- **Multiple topology support**: hexagonal and rectangular
+- **Visualization**:
+  - U-Matrix (interpolated grid with per-unit calibration labels)
+  - Component planes, hit map, class distribution map
+  - Sammon's Mapping projection
+- **Evaluation metrics**: quantization error, WCSS, Silhouette Score, Topological Error
 
 ## Installation
-
-### From source
 
 ```bash
 git clone https://github.com/remokasu/somkit.git
@@ -43,206 +45,326 @@ pip install -e .
 
 ## Quick Start
 
+The canonical usage is two-phase training (coarse ordering then fine tuning). The example below uses the Iris dataset via a `DatasetWrapper`, which adapts any object with `.data`, `.target`, and `.target_names` attributes.
+
 ```python
 import somkit
 from sklearn.datasets import load_iris
 
-# Load dataset
 data = load_iris()
 
-# Create and configure SOM
 som = somkit.create_trainer(
-    data=data,
+    data=data,           # sklearn Bunch, DatasetWrapper, ndarray, or SOMData
     size=(10, 10),
-    learning_rate=0.01,
-    n_func=somkit.functions.gaussian,
-    initial_radius=5.0,
-    dynamic_radius=True,
+    learning_rate=0.05,
     topology="hexagonal",  # or "rectangular"
-    random_seed=42
 )
 
-# Normalize and initialize
-som.normalize_data(method='standard')  # or 'minmax', 'variance'
-# som.standardize_data()  # equivalent to normalize_data(method='standard')
-som.initialize_weights_linearly()  # or initialize_weights_randomly(), initialize_weights_with_pca()
+som.initialize_weights_randomly()  # randinit: per-component [min, max] range
 
-# Train the SOM
-som.train(n_epochs=500, batch_size=1)  # Sequential learning
-# or
-# som.train_batch(n_epochs=500)  # Batch learning
+# Two-phase training
+som.train_two_phase(
+    phase1=dict(rlen=1000, alpha=0.05, radius=10.0, neighborhood="bubble", seed=1),
+    phase2=dict(rlen=10000, alpha=0.02, radius=3.0, neighborhood="bubble", seed=1),
+)
 
 # Evaluate
 evaluator = somkit.SOMEvaluator(som)
 print("WCSS:", evaluator.calculate_wcss())
 print("Silhouette Score:", evaluator.calculate_silhouette_score())
+print("Topological Error:", evaluator.calculate_topological_error())
 
 # Visualize
 visualizer = somkit.SOMVisualizer(som)
-visualizer.plot_umatrix(show_data_points=True)
+visualizer.plot_umatrix()              # umat style with vcal labels
 visualizer.plot_component_planes()
 visualizer.plot_hit_map()
 visualizer.plot_class_distribution()
 ```
 
+## SOM_PAK Compatibility
+
+The core algorithms and the `.cod` / `.dat` / `.vis` file formats are tested against reference outputs of **SOM_PAK 3.1**, the original SOM implementation by the Kohonen lab. The reference files live under `test/golden/`, and the test suite compares somkit's outputs against them; see the tests there for exactly what is covered and with which tolerances.
+
+## Training
+
+### `train_pak`
+
+`train_pak` runs `rlen` total steps, presenting one sample per step by cycling the data with optional shuffling. Learning rate and radius decay **per step**:
+
+- `alpha` decays linearly from the initial value to 0
+- `radius` decays linearly from the initial value to 1 (floor)
+
+```python
+som.train_pak(
+    rlen=10000,            # total steps
+    alpha=0.02,            # initial learning rate
+    radius=3.0,            # initial neighborhood radius (decays to 1)
+    alpha_type="linear",   # "linear" (default) or "inverse_t"
+    neighborhood="bubble", # "bubble" (default) or "gaussian"
+    seed=1,                # seed for the sample presentation order
+)
+```
+
+### Two-phase training
+
+The classic SOM schedule trains in two phases: a short coarse-ordering run with a large radius, followed by a longer fine-tuning run with a small radius. `train_two_phase` is syntactic sugar that calls `train_pak` twice on the same trainer, so phase 2 continues from phase 1's weights.
+
+```python
+som.train_two_phase(
+    phase1=dict(rlen=1000, alpha=0.05, radius=10.0, neighborhood="bubble", seed=1),
+    phase2=dict(rlen=10000, alpha=0.02, radius=3.0, neighborhood="bubble", seed=1),
+)
+```
+
+The `examples/animal.py` file uses these exact parameters.
+
+### Best-map selection (`vfind`)
+
+SOM results depend on the random initialization, so a standard workflow trains several maps with different seeds and keeps the one with the smallest quantization error. `SOMTrainer.vfind` runs that loop:
+
+```python
+best = somkit.SOMTrainer.vfind(
+    data, (10, 10),
+    phase1=dict(rlen=1000, alpha=0.05, radius=10.0),
+    phase2=dict(rlen=10000, alpha=0.02, radius=3.0),
+    n_trials=5,                # seeds 1..5 (or pass seeds=[...])
+    test_data=None,            # None evaluates on the training data
+)
+best.vfind_best_seed           # winning seed
+best.vfind_best_qerror         # its mean per-sample quantization error
+best.vfind_qerrors             # {seed: qerror} for every trial
+```
+
+Each trial's quantization error is logged at INFO level.
+
+### Training snapshots
+
+`train_pak` can save the codebook every N steps, producing numbered `.cod` files for convergence analysis or animation:
+
+```python
+som.train_pak(
+    rlen=10000, alpha=0.05, radius=10.0,
+    snapshot_interval=1000,
+    snapshot_path="run/map.cod",   # -> run/map_01000.cod, run/map_02000.cod, ...
+)
+```
+
+## Per-sample BMU and quantization error (`visual`)
+
+For a trained map, `compute_visual` returns each sample's best matching unit and its quantization error; `write_vis` saves the same data as a `.vis` file:
+
+```python
+res = som.compute_visual()     # VisualResult: coords (n,2), qerrors (n,), labels
+som.write_vis("result.vis")    # .vis output
+```
+
+Each `.vis` line is `x y qerror [label]`, where the label is the BMU unit's calibrated label. A fully masked sample (no valid components) is written as `-1 -1 -1`.
+
+## Data Files (`.dat`)
+
+### Loading `.dat` files
+
+`load_som_pak_data` reads `.dat` files (the SOM_PAK data format) and returns a `DatasetWrapper` (compatible with `create_trainer`). Each row holds space-separated feature values; a trailing label token is optional.
+
+```python
+data = somkit.load_som_pak_data("animal.dat")
+```
+
+### Per-sample metadata with `SOMData`
+
+To use features such as missing-component masks (`x` fields in `.dat`), per-sample learning weights, or fixed-point BMUs, pass a `SOMData` container to `create_trainer`.
+
+```python
+import numpy as np
+from somkit.data_loader import SOMData
+
+X = np.random.rand(100, 8)
+
+# Mask specific components for specific samples (True = ignore)
+mask = np.zeros((100, 8), dtype=bool)
+mask[5, 2] = True   # sample 5, component 2 is missing
+
+# Per-sample learning weight
+sample_weights = np.ones(100)
+sample_weights[10] = 2.0  # sample 10 counts double
+
+sdata = SOMData(data=X, mask=mask, weights=sample_weights)
+som = somkit.create_trainer(data=sdata, size=(10, 10), learning_rate=0.05)
+som.initialize_weights_randomly()
+som.train_pak(rlen=5000, alpha=0.05, radius=5.0, neighborhood="bubble", seed=1)
+```
+
+`SOMData` also accepts `fixed` / `fixed_valid` to force the BMU for specific samples.
+
+## Codebook I/O
+
+### Saving a `.cod` file
+
+After training, save the codebook. Labels from `calibrate_labels` can be embedded in the file, equivalent to `vcal` output.
+
+```python
+labels = som.calibrate_labels(numlabs=1)  # majority label per unit
+som.save_cod("result.cod", neigh="bubble", labels=labels)
+```
+
+### Loading a `.cod` file
+
+```python
+som = somkit.SOMTrainer.load_cod("result.cod")
+# attach data before further training or evaluation
+som.set_data(data)
+```
+
+`load_cod` / `save_cod` are also available as standalone functions:
+
+```python
+header, weights = somkit.read_cod("result.cod")
+somkit.write_cod("copy.cod", weights, topol="hexa", neigh="bubble")
+```
+
+## Weight Initialization
+
+### Random initialization
+
+`initialize_weights_randomly` initializes each component from the per-component `[min, max]` range of the training data.
+
+```python
+som.initialize_weights_randomly()        # default
+som.initialize_weights_randomly(rng=somkit.functions.OrandRNG(seed=42))  # explicit seed
+```
+
+### Linear (PCA-based) initialization
+
+Initializes weights in the subspace spanned by the two largest principal components of the data, arranged in a linear grid.
+
+```python
+som.initialize_weights_linearly()
+```
+
+## Data Normalization
+
+Normalization is opt-in:
+
+```python
+som.normalize_data(method="standard")  # Z-score (mean=0, std=1)
+som.normalize_data(method="minmax")    # scale to [0, 1]
+som.normalize_data(method="variance")  # divide by std, preserve mean
+```
+
+## Topology
+
+Both hexagonal and rectangular topologies are supported. Topology affects BMU search distance, neighborhood function, and visualization grid shape.
+
+```python
+som = somkit.create_trainer(data=data, size=(10, 10), learning_rate=0.05, topology="hexagonal")
+som = somkit.create_trainer(data=data, size=(10, 10), learning_rate=0.05, topology="rectangular")
+```
+
+## Visualization
+
+All visualization methods are on `SOMVisualizer`. Every map shares the same grid orientation (row 0 at top), so the same unit appears at the same position across all plot types.
+
+### U-Matrix
+
+```python
+visualizer = somkit.SOMVisualizer(som)
+visualizer.plot_umatrix()                    # umat style (default)
+visualizer.plot_umatrix(
+    show_labels=True,    # vcal majority labels per unit
+    numlabs=1,           # max labels per unit (0 = all)
+    show_nodes=True,     # dot on units with no label
+    file_name="umatrix.png",
+    show=False,
+)
+```
+
+The U-Matrix uses the `(2*x-1, 2*y-1)` interpolated grid: cells between units show the inter-unit distance, and the darker walls mark cluster boundaries.
+
+### Component Planes, Hit Map, Class Distribution
+
+```python
+visualizer.plot_component_planes(file_name="planes.png", show=False)
+visualizer.plot_hit_map(file_name="hitmap.png", show=False)
+visualizer.plot_class_distribution(file_name="classes.png", show=False)
+```
+
+### Sammon's Mapping Projection
+
+Projects high-dimensional data and SOM nodes to 2D using Sammon's mapping. Preserves inter-point distances, providing a topology-independent view of the data structure.
+
+```python
+visualizer.plot_sammon_projection(
+    show_nodes=True,
+    show_data_points=True,
+    show_connections=True,
+    connection_style="spring",   # "spring" (thickness ~ distance) or "line"
+    colormap="tab10",            # auto-switches to tab20 for >10 classes
+    max_iter=500,
+    learning_rate=0.2,
+    random_state=42,
+    file_name="sammon.png",
+    show=False,
+)
+```
+
+## Evaluation
+
+```python
+evaluator = somkit.SOMEvaluator(som)
+print("WCSS:", evaluator.calculate_wcss())
+print("Silhouette Score:", evaluator.calculate_silhouette_score())
+print("Topological Error:", evaluator.calculate_topological_error())
+```
+
+## Model Persistence
+
+```python
+som.save_model("my_som.h5")   # somkit native HDF5 checkpoint
+```
+
+For `.cod` output, use `save_cod` instead (see [Codebook I/O](#codebook-io)).
+
 ## Examples
 
-Train and visualize a SOM with the sample datasets provided:
+All examples are in `examples/`. Run from the `examples/` directory.
 
-### Animal dataset
+### Animal dataset (two-phase training)
+
 ```bash
 cd examples
 python animal.py
 ```
 
 ### Iris dataset
+
 ```bash
-cd examples
 python iris.py
 ```
 
-### Batch SOM example
+### Breast cancer, digits, wine datasets
+
 ```bash
-cd examples
-python batch_som_simple.py
+python breast_cancer.py
+python digits.py
+python wine.py
 ```
 
-### Compare Sequential vs Batch SOM
-```bash
-cd examples
-python batch_som_example.py
+## Directory Structure
+
 ```
-
-### Normalization methods
-```bash
-cd examples
-python normalization_example.py
+somkit/
+  somkit/
+    trainer/        # SOMTrainer, create_trainer, train_pak, train_two_phase
+    functions/      # neighborhood, decay, rng (OrandRNG), learning, initialization
+    data_loader/    # SOMData, SOMPakDataLoader, load_som_pak_data
+    io/             # cod.py — read_cod, write_cod
+    visualizer/     # SOMVisualizer, compute_umatrix_pak
+    evaluator/      # SOMEvaluator
+    topology/       # HexagonalTopology, RectangularTopology
+    preprocessing/  # normalization
+    projection/     # Sammon's mapping
+    decomposition/  # PCA
+  examples/
+  test/
 ```
-
-## Data Normalization
-
-somkit supports multiple normalization methods to scale input features:
-
-```python
-# Standard normalization (Z-score): mean=0, std=1
-som.normalize_data(method='standard')
-
-# Min-Max normalization: scale to [0, 1]
-som.normalize_data(method='minmax')
-
-# Variance normalization: std=1, preserve mean
-som.normalize_data(method='variance')
-
-# Backward compatibility
-som.standardize_data()  # equivalent to normalize_data(method='standard')
-```
-
-Normalization helps prevent features with large ranges from dominating the training process.
-
-## Training Algorithms
-
-somkit supports two training algorithms:
-
-### Sequential Learning (Online Learning)
-Updates weights incrementally after each sample or mini-batch.
-
-```python
-som.train(n_epochs=500, batch_size=1)  # Sequential learning
-```
-
-### Batch Learning
-Processes all training samples before updating weights using a weighted average: **w_i(t+1) = Σ_j h_ij(t)·x_j / Σ_j h_ij(t)**
-
-```python
-som.train_batch(n_epochs=500)  # Batch learning
-```
-
-## Initialization Methods
-
-somkit provides three initialization methods:
-
-### Linear Initialization - **Recommended**
-Weight vectors are initialized to lie in a linear subspace spanned by the two largest principal components of the data.
-
-```python
-som.initialize_weights_linearly()
-```
-
-**Benefits:**
-- Faster and more stable convergence
-- Better reproducibility
-- Improved topology preservation
-
-### PCA Initialization
-Initialize using principal component analysis. Similar to linear initialization but uses a different scaling approach.
-
-```python
-som.initialize_weights_with_pca()
-```
-
-### Random Initialization
-Random initialization of weight vectors.
-
-```python
-som.initialize_weights_randomly()
-```
-
-## Topology Support
-
-somkit supports both **hexagonal** and **rectangular** topologies:
-
-- **Hexagonal topology** (default): Uses hexagonal grid structure with cube coordinate distance calculation. Provides more uniform neighbor distances and is commonly used in traditional SOM implementations.
-
-- **Rectangular topology**: Uses standard rectangular grid with Euclidean distance. Simpler to visualize and compatible with grid-based data structures.
-
-The topology affects both the **learning process** (distance calculation in neighborhood function) and **visualization** (grid layout and patch shapes).
-
-```python
-# Create SOM with rectangular topology
-som = somkit.create_trainer(
-    data=data,
-    size=(10, 10),
-    topology="rectangular"
-)
-```
-
-## Visualization Methods
-
-### U-Matrix
-Visualizes the distance between neighboring nodes, revealing cluster boundaries.
-
-### Component Planes
-Shows the distribution of each input feature across the SOM, helping understand which features influence different regions.
-
-### Hit Map
-Displays the number of data points mapped to each node, revealing data density distribution and potential dead units.
-
-### Class Distribution Map
-Shows the distribution of classes at each node with pie charts, making class boundaries visually clear.
-
-### Sammon's Mapping Projection
-Projects high-dimensional data and SOM nodes to 2D using Sammon's mapping, a non-linear dimensionality reduction technique that preserves inter-point distances. This provides an alternative view of the data structure that is independent of the SOM grid topology.
-
-```python
-visualizer = somkit.visualizer.SOMVisualizer(som)
-
-# Visualize both SOM nodes and data points
-visualizer.plot_sammon_projection(
-    show_nodes=True,
-    show_data_points=True,
-    show_connections=True,        # Show connections between adjacent nodes
-    show_legend=True,
-    show_labels=False,            # Show labels on data points
-    node_size=200,                # Size of SOM node markers
-    data_point_size=100,          # Size of data point markers
-    connection_style="spring",    # "spring" or "line"
-    colormap="tab10",             # Color scheme for classes
-    file_name="sammon_projection.png"
-)
-```
-
-**Visualization features:**
-- **Spring connections**: Connection thickness varies with distance (stronger for closer nodes)
-- **Improved styling**: Clean, publication-quality appearance with better color schemes
-- **Flexible display**: Control node/data visibility, labels, and sizing
-- **High-quality output**: 300 DPI PNG files suitable for papers
